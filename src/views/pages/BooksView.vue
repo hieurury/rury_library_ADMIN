@@ -21,7 +21,16 @@ import {
     NNumberAnimation,
     NButton,
     NIcon,
-    NConfigProvider
+    NConfigProvider,
+    NModal,
+    NForm,
+    NFormItem,
+    NInputNumber,
+    NDatePicker,
+    NUpload,
+    NUploadDragger,
+    NText,
+    NDivider as NDividerComponent
 }                               from    'naive-ui';
 import axios                    from    'axios';
 import {
@@ -194,6 +203,177 @@ watch([currentBooks, currentPage], ([newBooks, currentPage]) => {
 });
 //<========== Liên quan đến phân trang
 
+//==========> Liên quan đến form sửa sách
+const editModalShow             =       ref(false);
+const editFormRef               =       ref(null);
+const selectedBook              =       ref(null);
+const fileListEdit              =       ref([]);
+const previewImageUrlEdit       =       ref('');
+
+const editForm                  =       ref({
+    bookName: '',
+    bookDescription: '',
+    bookAuthor: '',
+    bookPublisher: null,
+    bookPublishedDate: Date.now(),
+    bookCategory: [],
+    bookQuantity: 1,
+    bookPrice: 1000,
+    bookImage: ''
+});
+
+const openEditModal = (book) => {
+    selectedBook.value = book;
+    editForm.value = {
+        bookName: book.TENSACH,
+        bookDescription: book.MOTA,
+        bookAuthor: book.TACGIA,
+        bookPublisher: book.MAXB.MANXB,
+        bookPublishedDate: new Date(book.NAMXUATBAN).getTime(),
+        bookCategory: book.THELOAI.map(t => t.MaLoai),
+        bookQuantity: book.SOQUYEN,
+        bookPrice: book.DONGIA,
+        bookImage: book.HINHANH
+    };
+    previewImageUrlEdit.value = `${BASE_API}/${book.HINHANH}`;
+    fileListEdit.value = [];
+    editModalShow.value = true;
+};
+
+const createPreviewImageUrlEdit = (file) => {
+    fileListEdit.value = file;
+    const raw = file[0]?.file;
+    if(raw) {
+        previewImageUrlEdit.value = URL.createObjectURL(raw);
+    }
+};
+
+const handleRemoveEdit = (file) => {
+    previewImageUrlEdit.value = `${BASE_API}/${selectedBook.value.HINHANH}`;
+    return true;
+};
+
+const beforeUploadEdit = (data) => {
+    const types = ['image/jpeg', 'image/png', 'image/svg+xml'];
+    const isJpgOrPng = types.includes(data.file.type);
+    if (!isJpgOrPng) {
+        message.error('Chỉ hỗ trợ file JPG/PNG/SVG!');
+    }
+    return isJpgOrPng;
+};
+
+const uploadImgEdit = async () => {
+    if(fileListEdit.value.length === 0) {
+        return selectedBook.value.HINHANH;
+    }
+    const formData = new FormData();
+    formData.append('image', fileListEdit.value[0].file);
+    const response = await axios.post(`${BASE_API}/sach/admin/upload-image`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    if(response.data.status == 'success') {
+        return response.data.imagePath;
+    } else {
+        message.error('Tải ảnh thất bại!');
+        return selectedBook.value.HINHANH;
+    }
+};
+
+const selectedPublisherEdit = computed(() => {
+    if (!selectedBook.value) return 'Chưa chọn NXB';
+    return allPublishers.value.find(publisher => publisher.MANXB === editForm.value.bookPublisher)?.TENNXB || 'Chưa chọn NXB';
+});
+
+const previewCategoriesEdit = computed(() => {
+    return allcategories.value.filter(category => editForm.value.bookCategory.includes(category.MaLoai));
+});
+
+const bookCategoryValidatorEdit = () => {
+    if(!editForm.value.bookCategory || editForm.value.bookCategory.length === 0) {
+        return new Error('Vui lòng chọn ít nhất một thể loại');
+    }
+    return true;
+};
+
+const bookPublisherValidatorEdit = () => {
+    if(!editForm.value.bookPublisher) {
+        return new Error('Vui lòng chọn nhà xuất bản');
+    }
+    return true;
+};
+
+const quantityValidatorEdit = (value) => {
+    if(editForm.value.bookQuantity <= 0) {
+        return new Error('Số lượng sách phải lớn hơn 0');
+    }
+    return true;
+};
+
+const numberValidatorEdit = (value) => {
+    return value > 0;
+};
+
+const rulesEdit = {
+    bookName: [
+        { required: true, message: 'Vui lòng nhập tên sách', trigger: 'blur' },
+        { min: 3, max: 100, message: 'Tên sách phải từ 3-100 ký tự', trigger: 'blur' }
+    ],
+    bookDescription: [
+        { required: true, message: 'Vui lòng nhập mô tả sách', trigger: 'blur' },
+        { min: 10, max: 500, message: 'Mô tả sách phải từ 10-500 ký tự', trigger: 'blur' }
+    ],
+    bookAuthor: [
+        { required: true, message: 'Vui lòng nhập tên tác giả', trigger: 'blur' },
+        { min: 3, max: 100, message: 'Tên tác giả phải từ 3-100 ký tự', trigger: 'blur' }
+    ],
+    bookPublisher: [
+        { validator: bookPublisherValidatorEdit, trigger: 'change' }
+    ],
+    bookCategory: [
+        { validator: bookCategoryValidatorEdit, trigger: 'change' }
+    ],
+    bookQuantity: [
+        { validator: quantityValidatorEdit, trigger: 'blur' }
+    ]
+};
+
+const submitEditForm = async () => {
+    editFormRef.value.validate(async (error) => {
+        if (!error) {
+            let imagePath = editForm.value.bookImage;
+            
+            if(fileListEdit.value.length > 0) {
+                imagePath = await uploadImgEdit();
+            }
+
+            const updatedBook = {
+                TENSACH: editForm.value.bookName,
+                MOTA: editForm.value.bookDescription,
+                DONGIA: editForm.value.bookPrice,
+                SOQUYEN: editForm.value.bookQuantity,
+                NAMXUATBAN: editForm.value.bookPublishedDate,
+                MANXB: editForm.value.bookPublisher,
+                TACGIA: editForm.value.bookAuthor,
+                HINHANH: imagePath,
+                THELOAI: editForm.value.bookCategory
+            };
+
+            const response = await axios.put(`${BASE_API}/sach/admin/update/${selectedBook.value.MASACH}`, updatedBook);
+            message[response.data.status](response.data.message);
+            
+            if(response.data.status == 'success') {
+                editModalShow.value = false;
+                await getAllBooks();
+            }
+        } else {
+            message.error('Vui lòng điền đầy đủ thông tin!');
+        }
+    });
+};
+//<========== Liên quan đến form sửa sách
+
 const customThemeLight = ref({
   Statistic: {
     valueTextColor: '#ffffff',
@@ -304,7 +484,7 @@ const customThemeDark = ref({
                                             Hành động này sẽ xoá đầu sách và toàn bộ bản sao ra khỏi hệ thống, bạn có chắc?
                                         </NPopconfirm>
                                         <!--  -->
-                                        <NIcon>
+                                        <NIcon @click="openEditModal(book)">
                                             <i class="fa-solid fa-pen-to-square text-blue-500 hover:text-blue-700 cursor-pointer"></i>
                                         </NIcon>
                                         
@@ -362,6 +542,132 @@ const customThemeDark = ref({
             </NSpace>
         </NSpace>
     </NConfigProvider>
+
+    <!-- Modal sửa sách với layout 2|1 -->
+    <NModal 
+        v-model:show="editModalShow" 
+        title="Sửa thông tin sách" 
+        preset="dialog"
+        type="default"
+        size="800"
+        class="dark:bg-slate-700 min-w-[1000px]"
+    >
+        <NSpace vertical class="max-h-[70vh] overflow-y-auto">
+            <NGrid cols="7" x-gap="12" y-gap="12" class="w-full">
+                <!-- Form phần trái -->
+                <NGi span="4">
+                    <NSpace vertical class="dark:bg-slate-700/20 bg-slate-200/70 rounded-lg p-6">
+                        <NForm ref="editFormRef" :model="editForm" :rules="rulesEdit" label-width="120px" class="w-full">
+                            <NFormItem label="Tên sách" path="bookName" required>
+                                <NInput v-model:value="editForm.bookName" placeholder="Nhập tên sách..." />
+                            </NFormItem>
+                            <NFormItem label="Mô tả" path="bookDescription" required>
+                                <NInput v-model:value="editForm.bookDescription" placeholder="Nhập mô tả sách..." type="textarea" />
+                            </NFormItem>
+                            <NFormItem label="Tên tác giả" path="bookAuthor" required>
+                                <NInput v-model:value="editForm.bookAuthor" placeholder="Nhập tên tác giả..." />
+                            </NFormItem>
+                            <NFormItem label="Nhà xuất bản" path="bookPublisher" required>
+                                <NSelect
+                                    v-model:value="editForm.bookPublisher"
+                                    filterable
+                                    placeholder="Chọn nhà xuất bản"
+                                    :options="publishersOptions"
+                                />
+                            </NFormItem>
+                            <NFormItem label="Năm xuất bản" path="bookPublishedDate" required>
+                                <NDatePicker v-model:value="editForm.bookPublishedDate" type="year" clearable placeholder="Chọn năm xuất bản" class="w-full"/>
+                            </NFormItem>
+                            <NFormItem label="Thể loại" path="bookCategory" required>
+                                <NSelect
+                                    v-model:value="editForm.bookCategory"
+                                    multiple
+                                    filterable
+                                    placeholder="Chọn thể loại"
+                                    :options="categoriesOptions"
+                                    :render-label="renderIconCategory"
+                                />
+                            </NFormItem>
+                            <NFormItem label="Số lượng" path="bookQuantity" required>
+                                <NInputNumber class="w-full" v-model:value="editForm.bookQuantity" :validator="numberValidatorEdit" placeholder="Nhập số lượng sách..." />
+                            </NFormItem>
+                            <NFormItem label="Đơn giá" path="bookPrice" required>
+                                <NInputNumber class="w-full" v-model:value="editForm.bookPrice" :validator="numberValidatorEdit" placeholder="Nhập đơn giá..." />
+                            </NFormItem>
+                            <NFormItem label="Hình ảnh" path="bookImage">
+                                <NUpload
+                                    name="icon"
+                                    v-model:file-list="fileListEdit"
+                                    @remove="handleRemoveEdit"
+                                    @before-upload="beforeUploadEdit"
+                                    @update:file-list="createPreviewImageUrlEdit"
+                                    :max="1"
+                                >
+                                    <NUploadDragger>
+                                        <div style="margin-bottom: 12px">
+                                            <NIcon class="text-3xl" :depth="3">
+                                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                            </NIcon>
+                                        </div>
+                                        <NText style="font-size: 16px">
+                                            Kéo thả file vào đây hoặc nhấp để thay đổi ảnh
+                                        </NText>
+                                        <NText depth="3" style="margin: 8px 0 0 0">
+                                            (Chỉ hỗ trợ file .svg .png .jpg, tối đa 1 file)
+                                        </NText>
+                                    </NUploadDragger>
+                                </NUpload>
+                            </NFormItem>
+                        </NForm>
+                    </NSpace>
+                </NGi>
+
+                <!-- Preview phần phải -->
+                <NGi span="3">
+                    <NSpace vertical class="dark:bg-slate-700/20 bg-slate-600/90 shadow rounded-lg p-6">
+                        <h3 class="text-lg font-semibold">Xem trước</h3>
+                        <NGrid :cols="3" x-gap="12" y-gap="12">
+                            <NGi span="1" :style="{ backgroundImage: `url('${previewImageUrlEdit}')` }" class="bg-no-repeat bg-center bg-contain"></NGi>
+                            <NGi span="2">
+                                <NThing>
+                                    <template #description>
+                                        <h1 class="text-lg font-semibold dark:text-gray-300 text-white">{{ editForm.bookName || 'Tên sách' }}</h1>
+                                        <NSpace class="text-sm">
+                                            <NEllipsis :line-clamp="1">
+                                                <span class="text-gray-300 text-xs">Tác giả: {{ editForm.bookAuthor || 'chưa điền'}}</span>
+                                                <NDivider vertical />
+                                                <span class="text-gray-300 text-xs">NXB: {{ selectedPublisherEdit }}</span>
+                                            </NEllipsis>
+                                        </NSpace>
+                                        <NEllipsis class="text-white" expand-trigger="click" :line-clamp="2">
+                                            {{ editForm.bookDescription || 'Mô tả đầu sách' }}
+                                        </NEllipsis>
+                                        <NDivider/>
+                                        <NSpace wrap size="small">
+                                            <NTag v-for="category in previewCategoriesEdit" :style="{background: category.Color, color: '#fff'}" size="small">
+                                                {{ category.TenLoai }}
+                                            </NTag>
+                                        </NSpace>
+                                    </template>
+                                </NThing>
+                            </NGi>
+                        </NGrid>
+                        <h3 class="text-lg font-semibold mt-4">Thông tin sách</h3>
+                        <NSpace vertical class="text-sm text-gray-300">
+                            <div>Số lượng: <strong>{{ editForm.bookQuantity }}</strong> quyển</div>
+                            <div>Đơn giá: <strong>{{ editForm.bookPrice.toLocaleString('vi-VN') }}</strong> đ</div>
+                            <div>Năm xuất bản: <strong>{{ new Date(editForm.bookPublishedDate).getFullYear() }}</strong></div>
+                        </NSpace>
+                    </NSpace>
+                </NGi>
+            </NGrid>
+        </NSpace>
+
+        <template #action>
+            <NButton @click="editModalShow = false">Hủy</NButton>
+            <NButton @click="submitEditForm" type="primary">Lưu thay đổi</NButton>
+        </template>
+    </NModal>
 </template>
 
 <style scoped>
