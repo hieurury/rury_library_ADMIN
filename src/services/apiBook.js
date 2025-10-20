@@ -12,5 +12,14 @@ const getAllBooks = async () => {
   }
 };
 
+const getBookTemplate = async (MASACH) => {
+  try {
+    const response = await axios.get(`${BASE_API}/sach/template/${MASACH}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching book template:", error);
+    throw error;
+  }
+};
 
-export { getAllBooks };
+export { getAllBooks, getBookTemplate };

@@ -68,7 +68,7 @@ const selectedKey           =       ref('librarian-books');
 const menuOptions           =       [
     {
         label: 'Books',
-        key:   'librarian',
+        key:   'books',
         icon:  () => icon('fa-solid fa-book'),
         children: [
             {
@@ -76,14 +76,14 @@ const menuOptions           =       [
                     RouterLink,
                     {
                         to: {
-                            name: 'librarian-home',
+                            name: 'books-list',
                         }
                     },
                     {
-                        default: () => 'All Books'
+                        default: () => 'Tất cả'
                     }
                 ),
-                key:   'librarian-home',
+                key:   'books-list',
                 icon: () => icon('fa-solid fa-book'),
             },
         ]
@@ -92,6 +92,28 @@ const menuOptions           =       [
         label: 'Categories',
         key:   'categories',
         icon:  () => icon('fa-solid fa-list'),
+    },
+    {
+        label: 'Borrow Management',
+        key:   'librarian-borrow',
+        icon:  () => icon('fa-solid fa-hand-holding-book'),
+        children: [
+            {
+                label: () => h(
+                    RouterLink,
+                    {
+                        to: {
+                            name: 'librarian-borrow-view',
+                        }
+                    },
+                    {
+                        default: () => 'Quản lý mượn trả'
+                    }
+                ),
+                key:   'librarian-borrow-view',
+                icon: () => icon('fa-solid fa-book-open-reader'),
+            },
+        ]
     },
 ]
 </script>

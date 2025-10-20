@@ -21,7 +21,18 @@ const getBorrowWithBillId = async (billId) => {
   }
 };
 
+const createBorrow = async (borrowData) => {
+  try {
+    const response = await axios.post(`${BASE_API}/borrow/add`, borrowData);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi tạo mượn sách:', error);
+    throw error;
+  }
+};
+
 export {
   getAllBorrows,
-  getBorrowWithBillId
+  getBorrowWithBillId,
+  createBorrow
 };
