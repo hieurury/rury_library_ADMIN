@@ -6,26 +6,27 @@ import {
     NButton, 
     NSpace,
     NGrid,
-    NGridItem,
+    NGi,
     NDivider,
-    NCard,
-    NSpin,
+    NList,
+    NListItem,
+    NThing,
+    NEllipsis,
     NScrollbar,
-    NSkeleton,
     useMessage,
 }                           from    'naive-ui';
-import LocationSelector from '../../../components/LocationSelector.vue';
+import LocationSelector     from '../../../components/LocationSelector.vue';
 import { 
     ref, 
     watch,
-    onMounted
-} from 'vue';
-import axios from 'axios';
+    onMounted,
+    computed
+}                           from 'vue';
+import axios                from 'axios';
 
 // ============= VARIABLES =============//
 const BASE_API = import.meta.env.VITE_BASE_API;
 const message = useMessage();
-const skeletonShow = ref(true);
 const allNxb = ref([]);
 
 
@@ -42,64 +43,86 @@ const form = ref({
     DiaChi: '',
 });
 
-// const checkLocation = () => {
-//     //không cần check xã vì một số chổ ko có
-//     if(!selectedLocation.value.province || !selectedLocation.value.district) {
-//         return new Error('Vui lòng chọn địa chỉ');
-//     }
-// }
+//=================== COMPUTED ===================//
+const previewAddress = computed(() => {
+    if (!selectedLocation.value.province) return 'Chưa chọn địa chỉ';
+    
+    const parts = [];
+    if (DiaChiCuThe.value) parts.push(DiaChiCuThe.value);
+    if (selectedLocation.value.ward?.label) parts.push(selectedLocation.value.ward.label);
+    if (selectedLocation.value.district?.label) parts.push(selectedLocation.value.district.label);
+    if (selectedLocation.value.province?.label) parts.push(selectedLocation.value.province.label);
+    
+    return parts.join(', ');
+});
+
+//=================== VALIDATE & RULES ===================//
+const checkLocation = () => {
+    if(!selectedLocation.value.province || !selectedLocation.value.district) {
+        return new Error('Vui lòng chọn tỉnh/thành phố và quận/huyện');
+    }
+    return true;
+}
+
+const checkDiaChiCuThe = () => {
+    if(!DiaChiCuThe.value || DiaChiCuThe.value.trim() === '') {
+        return new Error('Vui lòng nhập địa chỉ cụ thể');
+    }
+    if(DiaChiCuThe.value.trim().length < 5) {
+        return new Error('Địa chỉ cụ thể phải có ít nhất 5 ký tự');
+    }
+    return true;
+}
 
 const formRules = ref({
     TenNXB: [
         { 
             required: true, 
-            message: 'Vui lòng nhập tên NXB', 
+            message: 'Vui lòng nhập tên nhà xuất bản', 
             trigger: ['blur', 'input'] 
+        },
+        {
+            min: 3,
+            max: 100,
+            message: 'Tên nhà xuất bản phải từ 3-100 ký tự',
+            trigger: ['blur', 'input']
         }
     ],
-    // DiaChi: [
-    //     { 
-    //         validator: checkLocation, 
-    //         trigger: ['blur'] 
-    //     }
-    // ],
-    // DiaChiCuThe: [
-    //     { 
-    //         validator: () => {
-    //             if(!DiaChiCuThe.value) {
-    //                 return new Error('Vui lòng nhập địa chỉ cụ thể');
-    //             }
-    //         },
-    //         trigger: ['blur', 'input'] 
-    //     }
-    // ]
+    DiaChi: [
+        { 
+            validator: checkLocation, 
+            trigger: ['blur', 'change'] 
+        }
+    ],
 })
 
-
-// ============= FUNCTIONS =============//
+//=================== FUNCTIONS ===================//
 const getAllNxb = async () => {
     try {
-        skeletonShow.value = true;
         const response = await axios.get(`${BASE_API}/nha-xuat-ban/all`);
-        skeletonShow.value = false;
         if(response.data.status === 'success') {
             allNxb.value = response.data.data;
-            console.log(allNxb.value);
         } else {
             message.error(response.data.message);
         }
     } catch (error) {
-        message.error('Lỗi khi lấy danh sách NXB');
+        message.error('Lỗi khi lấy danh sách nhà xuất bản');
     }
 }
 
 onMounted(async () => {
-    //fetch all NXB
-    getAllNxb();
+    document.title = 'Thêm nhà xuất bản | RuryLib Admin';
+    await getAllNxb();
 })
 
 watch([selectedLocation, DiaChiCuThe], () => {
-    form.value.DiaChi                       = `${DiaChiCuThe.value ? DiaChiCuThe.value + ', ' : ''}${selectedLocation.value.ward?.label}, ${selectedLocation.value.district?.label}, ${selectedLocation.value.province?.label}`;
+    const parts = [];
+    if (DiaChiCuThe.value) parts.push(DiaChiCuThe.value);
+    if (selectedLocation.value.ward?.label) parts.push(selectedLocation.value.ward.label);
+    if (selectedLocation.value.district?.label) parts.push(selectedLocation.value.district.label);
+    if (selectedLocation.value.province?.label) parts.push(selectedLocation.value.province.label);
+    
+    form.value.DiaChi = parts.join(', ');
 });
 
 //submit form
@@ -107,21 +130,32 @@ const submit = (e) => {
     e.preventDefault();
     formRef.value.validate( async (errors) => {
         if (!errors) {
-            const response                  = await axios.post(`${BASE_API}/nha-xuat-ban/admin/create`, form.value);
+            // Validate địa chỉ cụ thể
+            const diaChiCheck = checkDiaChiCuThe();
+            if (diaChiCheck instanceof Error) {
+                message.error(diaChiCheck.message);
+                return;
+            }
+
+            const response = await axios.post(`${BASE_API}/nha-xuat-ban/admin/create`, form.value);
             message[response.data.status](response.data.message);
+            
             if(response.data.status === 'success') {
-                form.value.TenNXB           =   '';
-                selectedLocation.value      =   {
+                // Reset form
+                form.value.TenNXB = '';
+                selectedLocation.value = {
                     province: null,
                     district: null,
                     ward: null
                 };
-                DiaChiCuThe.value           =   '';
-                //lấy lại danh sách NXB
-                getAllNxb();
+                DiaChiCuThe.value = '';
+                formRef.value.restoreValidation();
+                
+                // Lấy lại danh sách NXB
+                await getAllNxb();
             }
         } else {
-            message.error('Form tạo mới chưa hợp lệ!');
+            message.error('Vui lòng kiểm tra lại thông tin!');
         }
     });
 }
@@ -129,53 +163,86 @@ const submit = (e) => {
 
 
 <template>
-    <NGrid :cols="6" class="p-4 h-full">
-        <NGridItem :span="4" class="p-4">
-            <NSpace justify="center">
-                <NSpace vertical
-                class="   
-                dark:bg-gradient-to-r dark:from-slate-800 dark:to-slate-600 dark:via-slate-700 shadow-md rounded-md">
-                    <h2 class="text-3xl uppercase font-semibold mb-4 dark:bg-gray-900 bg-amber-500 p-4 rounded-t-md">Thêm nhà xuất bản mới</h2>
-                    <NSpace class="p-4" vertical align="start" size="large">
-                        <NForm class="max-w-md min-w-md" labelWidth="120px" ref="formRef" :model="form" :rules="formRules">
-                            <NDivider />
-                            <NFormItem class="text-lg" label="Tên nhà xuất bản" path="TenNXB">
+    <NSpace vertical class="p-4">
+        <NGrid cols="8" x-gap="12" y-gap="12" class="w-full">
+            <!-- Form Section -->
+            <NGi span="4">
+                <NSpace vertical class="dark:bg-slate-600/30 h-full bg-white shadow-md rounded-md p-8 px-18 w-full">
+                    <NSpace vertical class="p-6 dark:bg-slate-600/20 bg-slate-200/50 rounded-lg">
+                        <h1 class="text-2xl font-semibold uppercase">Thêm nhà xuất bản</h1>
+                        <NDivider />
+                        <NForm ref="formRef" :model="form" :rules="formRules" label-width="140px" class="w-full">
+                            <NFormItem label="Tên nhà xuất bản" path="TenNXB" required>
                                 <NInput v-model:value="form.TenNXB" placeholder="Nhập tên nhà xuất bản..." />
                             </NFormItem>
-                            <NFormItem label="Địa chỉ" path="DiaChi">
+                            <NFormItem label="Địa chỉ" path="DiaChi" required>
                                 <LocationSelector v-model:selectedLocation="selectedLocation" />
                             </NFormItem>
-                            <NFormItem label="Nhập địa chỉ cụ thể" path="DiaChiCuThe">
-                                <NInput v-model:value="DiaChiCuThe" placeholder="Nhập địa chỉ cụ thể..." />
+                            <NFormItem label="Địa chỉ cụ thể" required>
+                                <NInput v-model:value="DiaChiCuThe" placeholder="Số nhà, tên đường..." />
                             </NFormItem>
-                            <NDivider />
+                            <NFormItem>
+                                <NButton @click="submit" type="primary">Thêm nhà xuất bản</NButton>
+                            </NFormItem>
                         </NForm>
-                        <NButton @click="submit" type="primary">Thêm NXB</NButton>
                     </NSpace>
                 </NSpace>
-            </NSpace>
-        </NGridItem>
-        <NGridItem :span="2" class="p-4">
-            <h3 class="text-2xl uppercase font-semibold mb-4">Nhà xuất bản hiện có</h3>
-            <NDivider />
-            <NScrollbar class="max-h-[600px]">
-                <NSkeleton v-show="skeletonShow" height="500px"/>
-                <NSpace v-show="!skeletonShow" vertical class="">
-                    <NCard v-for="nxb in allNxb" :key="nxb.MANXB" :title="`NXB: ${nxb.TENNXB}`" class="min-w-full mb-2 card-custom shadow-md">
-                        <div class="font-semibold">Địa chỉ</div>
-                        <div class="text-sm italic text-gray-600">{{ nxb.DIACHI || 'Chưa có địa chỉ' }}</div>
-                    </NCard>
+            </NGi>
+
+            <!-- Preview & List Section -->
+            <NGi span="4">
+                <NSpace vertical class="dark:bg-slate-600/30 h-full bg-white shadow-md rounded-md p-8 w-full">
+                    <h1 class="text-2xl font-semibold uppercase">Xem trước</h1>
+                    <NDivider />
+                    <NSpace vertical class="p-6 dark:bg-slate-600/20 bg-slate-600/90 rounded-lg">
+                        <NThing :style="{ color: '#fff' }">
+                            <template #header>
+                                <h3 class="text-lg font-semibold dark:text-gray-300 text-white">
+                                    {{ form.TenNXB || 'Tên nhà xuất bản' }}
+                                </h3>
+                            </template>
+                            <template #description>
+                                <div class="text-gray-300 text-sm mt-2">
+                                    <div class="font-semibold">Địa chỉ:</div>
+                                    <NEllipsis :line-clamp="2" class="text-gray-200 italic">
+                                        {{ previewAddress }}
+                                    </NEllipsis>
+                                </div>
+                            </template>
+                        </NThing>
+                    </NSpace>
+
+                    <h1 class="text-2xl my-2 font-semibold uppercase">Nhà xuất bản hiện có</h1>
+                    <NList clickable hoverable show-divider="true">
+                        <NScrollbar style="max-height: 400px;">
+                            <NGrid cols="1" x-gap="12" y-gap="12" class="p-2">
+                                <NGi v-for="nxb in allNxb" :key="nxb.MANXB">
+                                    <NListItem class="dark:bg-gray-600/20 bg-transparent shadow rounded-md p-4">
+                                        <NThing :title="nxb.TENNXB">
+                                            <template #description>
+                                                <div class="text-sm mt-2">
+                                                    <span class="font-semibold">Mã NXB:</span> 
+                                                    <span class="text-gray-600 dark:text-gray-400">{{ nxb.MANXB }}</span>
+                                                </div>
+                                                <div class="text-sm mt-1">
+                                                    <span class="font-semibold">Địa chỉ:</span>
+                                                    <NEllipsis :line-clamp="2" class="text-gray-600 dark:text-gray-400 italic">
+                                                        {{ nxb.DIACHI || 'Chưa có địa chỉ' }}
+                                                    </NEllipsis>
+                                                </div>
+                                            </template>
+                                        </NThing>
+                                    </NListItem>
+                                </NGi>
+                            </NGrid>
+                        </NScrollbar>
+                    </NList>
                 </NSpace>
-            </NScrollbar>
-        </NGridItem>
-    </NGrid>
+            </NGi>
+        </NGrid>
+    </NSpace>
 </template>
 
 <style scoped>
-.card-custom {
-    background: orange;
-}
-.dark .card-custom {
-    background: #1e293b; /* bg-slate-800 */
-}
+
 </style>

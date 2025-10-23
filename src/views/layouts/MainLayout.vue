@@ -36,6 +36,7 @@ import {
 }                           from    '../../hooks/useAccount.js';
 
 import icon                 from    '../../hooks/useIcon.js';
+import Search               from '../../components/Search.vue';
 
 
 
@@ -206,6 +207,7 @@ const menuOptions           =       [
             <NSpace align="center" size="large">
                 <h1 class="text-xl uppercase font-semibold">Admin Dashboard</h1>
             </NSpace> 
+            <Search />
             <NSpace align="center" size="large">
                 <span class="flex space-x-1 border-r border-r-gray-300 pr-4">
                     <h3>Quản trị viên</h3>
