@@ -194,6 +194,42 @@ const menuOptions           =       [
                 icon: () => icon('fa-solid fa-plus'),
             },
         ]
+    },
+    {
+        label: 'Gói thành viên',
+        key:   'packages',
+        icon:  () => icon('fa-solid fa-address-card'),
+        children: [
+            {
+                label: () => h(
+                    RouterLink,
+                    {
+                        to: {
+                            name: 'packages-list',
+                        }
+                    },
+                    {
+                        default: () => 'Tất cả'
+                    }
+                ),
+                key:   'packages-list',
+                icon:  () => icon('fa-solid fa-list'),
+            }, {
+                label: () => h(
+                    RouterLink,
+                    {
+                        to: {
+                            name: 'add-new-package',
+                        }
+                    },
+                    {
+                        default: () => 'Thêm mới'
+                    }
+                ),
+                key:   'add-new-package',
+                icon:  () => icon('fa-solid fa-plus'),
+            }
+        ]
     }
 ]
 

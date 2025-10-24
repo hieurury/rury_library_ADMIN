@@ -67,54 +67,28 @@ const menuRef               =       ref(null);
 const selectedKey           =       ref('librarian-books');
 const menuOptions           =       [
     {
-        label: 'Books',
-        key:   'books',
-        icon:  () => icon('fa-solid fa-book'),
-        children: [
-            {
-                label: () => h(
-                    RouterLink,
-                    {
-                        to: {
-                            name: 'books-list',
-                        }
-                    },
-                    {
-                        default: () => 'Tất cả'
-                    }
-                ),
-                key:   'books-list',
-                icon: () => icon('fa-solid fa-book'),
-            },
-        ]
+        label: () => h(RouterLink, 
+            { to: { name: 'librarian-home' } }, 
+            { default: () => 'Trang chủ' }
+        ),
+        key:   'librarian-home',
+        icon:  () => icon('fa-solid fa-gear'),
     },
     {
-        label: 'Categories',
-        key:   'categories',
-        icon:  () => icon('fa-solid fa-list'),
+        label: () => h(RouterLink, { to: { name: 'librarian-users-manager' } }, { default: () => 'Thành viên' }),
+        key:   'librarian-users-manager',
+        icon:  () => icon('fa-solid fa-users'),
     },
-    {
-        label: 'Borrow Management',
-        key:   'librarian-borrow',
-        icon:  () => icon('fa-solid fa-hand-holding-book'),
-        children: [
-            {
-                label: () => h(
-                    RouterLink,
-                    {
-                        to: {
-                            name: 'librarian-borrow-view',
-                        }
-                    },
-                    {
-                        default: () => 'Quản lý mượn trả'
-                    }
-                ),
-                key:   'librarian-borrow-view',
-                icon: () => icon('fa-solid fa-book-open-reader'),
-            },
-        ]
-    },
+    // {
+    //     label: h(RouterLink, { to: { name: 'librarian-books' } }, { default: () => 'Sách' }),
+    //     key:   'librarian-books',
+    //     icon:  () => icon('fa-solid fa-book'),
+    // },
+    // {
+    //     label: h(RouterLink, { to: { name: 'librarian-categories' } }, { default: () => 'Thể loại' }),
+    //     key:   'librarian-categories',
+    //     icon:  () => icon('fa-solid fa-list'),
+    // },
 ]
 </script>
 

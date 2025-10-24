@@ -1,7 +1,7 @@
 <script setup>
 const BASE_API                  =       import.meta.env.VITE_BASE_API;
 const IMG_ASSETS                =       import.meta.env.VITE_IMG_ASSETS;
-const DEFAULT_DIR               =       import.meta.env.VITE_DEFAULT_DIR;
+const BADGE_DIR                 =       import.meta.env.VITE_BADGE_DIR;
 import { NImage }               from    'naive-ui';
 import {
     ref,
@@ -14,17 +14,25 @@ import {
 const props                      =       defineProps({
     img: {
         type: String,
-        default: 'plus-bookmark'
+    },
+    url: {
+        type: String,
     },
     children: {
         type: Object,
         required: false,
-        default: () => ({})
+        default: () => ({
+            width: '50px',
+            height: '50px',
+        })
     },
     position: {
         type: Object,
         required: false,
-        default: () => ({})
+        default: () => ({
+            top: '0px', 
+            right: '0px',
+        })
     },
 });
 
@@ -41,7 +49,7 @@ const props                      =       defineProps({
         left: position.left,
         bottom: position.bottom,
         }">
-        <NImage :style="children" :src="`${BASE_API}/${IMG_ASSETS}/${DEFAULT_DIR}/${img}.svg`"></NImage>
+        <NImage :style="children" :src=" img ? `${BASE_API}${img}` : url"></NImage>
     </span>
 </template>
 

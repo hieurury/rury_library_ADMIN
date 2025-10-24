@@ -50,7 +50,7 @@ function buttonValidate(e) {
   formRef.value?.validate(async (errors) => {
     if (!errors) {
       //post data to server
-      const response    =   await axios.post(`${BASE_API}/admin/account/login`, modelRef.value);
+      const response    =   await axios.post(`${BASE_API}/account/login`, modelRef.value);
       message[response.data.status](response.data.message);
 
       //check phan hoi

@@ -339,39 +339,11 @@ const customThemeDark = ref({
 <template>
     <NConfigProvider :theme-overrides="isDark ? customThemeDark : customThemeLight">
         <div class="p-6">
-            <h1 class="text-4xl font-semibold uppercase my-2">Thống kê trong ngày</h1>
-            <NRow align="middle" gutter="24" class="p-2 shadow-md rounded-md dark:bg-gray-800 bg-white">
-                <NRow class="my-4" :gutter="24">
-                    <NCol :span="8">
-                        <NStatistic
-                            label="Sách mượn trong ngày"
-                            :value="borrowedBooksToday.length"
-                            labelTextColor="#fff"
-                            class="w-full ring-2 ring-blue-600 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-600/50 dark:to-blue-700/50 shadow-md text-white rounded-md p-4"
-                        />
-                    </NCol>
-                    <NCol :span="8">
-                        <NStatistic
-                            label="Sách trả trong ngày"
-                            :value="returnedBooksToday.length"
-                            class="w-full ring-2 ring-green-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-600/50 dark:to-green-700/50 shadow-md rounded-md p-4"
-                        />
-                    </NCol>
-                    <NCol :span="8">
-                        <NStatistic
-                            label="Sách quá hạn trong ngày"
-                            :value="overdueBooks.length"
-                            class="w-full ring-2 ring-red-500 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-600/50 dark:to-red-700/50 shadow-md rounded-md p-4"
-                        />
-                    </NCol>
-                </NRow>
-            </NRow>
-        </div>
-        <div class="p-3">
+            <h1 class="text-4xl font-semibold uppercase my-2">Quản lý mượn trả sách</h1>
             <div class="p-6 shadow-lg rounded-lg bg-white dark:bg-gray-800">
-                <NGrid cols="2">
+                <NGrid cols="2" x-gap="24" y-gap="24">
                     <NGi span="1">
-                        <n-card>
+                        <n-card class="h-full">
                             <n-tabs
                             v-model:value="activeTab"
                             class="card-tabs"

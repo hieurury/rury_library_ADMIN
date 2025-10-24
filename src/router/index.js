@@ -1,24 +1,30 @@
-import { createWebHistory, createRouter } from "vue-router";
-import { currentAccount } from '../hooks/useAccount.js';
+import { 
+    createWebHistory, 
+    createRouter 
+}                           from "vue-router";
+import { currentAccount }   from '../hooks/useAccount.js';
 //layouts
-import MainLayout from "../views/layouts/MainLayout.vue";
-import LoginLayout from "../views/layouts/LoginLayout.vue";
-import LibrarianLayout from "../views/layouts/LibrarianLayout.vue";
+import MainLayout           from "../views/layouts/MainLayout.vue";
+import LoginLayout          from "../views/layouts/LoginLayout.vue";
+import LibrarianLayout      from "../views/layouts/LibrarianLayout.vue";
 
 //pages (admin)
-import HomeView from "../views/pages/admin/HomeView.vue";
-import BooksView from "../views/pages/BooksView.vue";
-import AddNewBookView from "../views/pages/admin/AddNewBookView.vue";
-import AddNewNXBView from "../views/pages/admin/AddNewNXBView.vue";
+import HomeView             from "../views/pages/admin/HomeView.vue";
+import BooksView            from "../views/pages/BooksView.vue";
+import AddNewBookView       from "../views/pages/admin/AddNewBookView.vue";
+import AddNewNXBView        from "../views/pages/admin/AddNewNXBView.vue";
+import AddNewPackageView       from "../views/pages/admin/AddNewPackageView.vue";
 //librarian pages
-import LHomeView from "../views/pages/librarian/LHomeView.vue";
+import LHomeView            from "../views/pages/librarian/LHomeView.vue";
+import LUsersManagerView    from "../views/pages/librarian/LUsersManagerView.vue";
 
 //both pages (admin & librarian)
-import LoginView from "../views/pages/LoginView.vue";
+import LoginView            from "../views/pages/LoginView.vue";
+import PackagesView         from "../views/pages/PackageView.vue";
 // import FirstTimeSetupView from "../views/pages/FirstTimeSetupView.vue";
-import NotFoundView from "../views/pages/NotFoundView.vue";
-import CategoriesView from "../views/pages/CategoriesView.vue";
-import AddNewCategoryView from "../views/pages/admin/AddNewCategoryView.vue";
+import NotFoundView         from "../views/pages/NotFoundView.vue";
+import CategoriesView       from "../views/pages/CategoriesView.vue";
+import AddNewCategoryView   from "../views/pages/admin/AddNewCategoryView.vue";
 
 // ================= Route Definitions ================= //
 // roles: 'Admin' | 'Librarian'
@@ -85,6 +91,24 @@ const routes = [
                         meta: { requiresAuth: true, roles: ['Admin'], title: 'Add New NXB' }
                     }
                 ]
+            },
+            {
+                path: 'packages',
+                name: 'admin-packages',
+                children: [
+                    {
+                        path: '',
+                        name: 'packages-list',
+                        component: PackagesView,
+                        meta: { requiresAuth: true, roles: ['Admin'], title: 'Packages' }
+                    },
+                    {
+                        path: 'add',
+                        name: 'add-new-package',
+                        component: AddNewPackageView,
+                        meta: { requiresAuth: true, roles: ['Admin'], title: 'Add New Package' }
+                    }
+                ]
             }
         ]
     },
@@ -99,6 +123,12 @@ const routes = [
                 name: 'librarian-home',
                 component: LHomeView,
                 meta: { requiresAuth: true, roles: ['Librarian'], title: 'Librarian Home' }
+            },
+            {
+                path: 'users', // /librarian/users
+                name: 'librarian-users-manager',
+                component: LUsersManagerView,
+                meta: { requiresAuth: true, roles: ['Librarian'], title: 'Users Manager' }
             }
         ]
     },
