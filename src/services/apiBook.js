@@ -22,4 +22,14 @@ const getBookTemplate = async (MASACH) => {
   }
 };
 
-export { getAllBooks, getBookTemplate };
+const updateBook = async (id, bookData) => {
+    try {
+        const response = await axios.put(`${BASE_API}/sach/admin/update/${id}`, bookData);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating book:", error);
+        throw error;
+    }
+};
+
+export { getAllBooks, getBookTemplate, updateBook };

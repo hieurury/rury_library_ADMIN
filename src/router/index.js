@@ -17,6 +17,7 @@ import AddNewPackageView       from "../views/pages/admin/AddNewPackageView.vue"
 //librarian pages
 import LHomeView            from "../views/pages/librarian/LHomeView.vue";
 import LUsersManagerView    from "../views/pages/librarian/LUsersManagerView.vue";
+import LBooksView           from "../views/pages/librarian/LBooksView.vue";
 
 //both pages (admin & librarian)
 import LoginView            from "../views/pages/LoginView.vue";
@@ -129,6 +130,12 @@ const routes = [
                 name: 'librarian-users-manager',
                 component: LUsersManagerView,
                 meta: { requiresAuth: true, roles: ['Librarian'], title: 'Users Manager' }
+            },
+            {
+                path: 'books', // /librarian/books
+                name: 'librarian-books',
+                component: LBooksView,
+                meta: { requiresAuth: true, roles: ['Librarian'], title: 'Books Management' }
             }
         ]
     },

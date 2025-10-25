@@ -30,7 +30,6 @@ import {
     NUpload,
     NUploadDragger,
     NText,
-    NDivider as NDividerComponent
 }                               from    'naive-ui';
 import axios                    from    'axios';
 import {
@@ -43,6 +42,9 @@ import {
 }                               from    'vue';
 
 import BookMarkControll from '../../components/BookMarkControll.vue';
+import {
+    updateBook
+}                       from '../../services/apiBook.js';
 import { isDark } from '../../hooks/useDark';
 
 //=========================== VRIABLES ===========================//
@@ -360,10 +362,10 @@ const submitEditForm = async () => {
                 THELOAI: editForm.value.bookCategory
             };
 
-            const response = await axios.put(`${BASE_API}/sach/admin/update/${selectedBook.value.MASACH}`, updatedBook);
-            message[response.data.status](response.data.message);
-            
-            if(response.data.status == 'success') {
+            const response = await updateBook(selectedBook.value.MASACH, updatedBook);
+            message[response.status](response.message);
+
+            if(response.status == 'success') {
                 editModalShow.value = false;
                 await getAllBooks();
             }
@@ -373,6 +375,10 @@ const submitEditForm = async () => {
     });
 };
 //<========== Liên quan đến form sửa sách
+
+const formatCurrency = (value) => {
+    return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+};
 
 const customThemeLight = ref({
   Statistic: {
@@ -508,12 +514,13 @@ const customThemeDark = ref({
                                                 <NEllipsis expand-trigger="click" :line-clamp="2">
                                                     {{ book.MOTA }}
                                                 </NEllipsis>
-                                                <NDivider/>
                                                 <NSpace wrap size="small">
-                                                <NTag v-for="theLoai in book.THELOAI" :style="{background: theLoai.Color, color: '#fff'}" size="small">
-                                                    {{ theLoai.TenLoai }}
-                                                </NTag>
-                                            </NSpace>
+                                                    <NTag v-for="theLoai in book.THELOAI" :style="{background: theLoai.Color, color: '#fff'}" size="small">
+                                                        {{ theLoai.TenLoai }}
+                                                    </NTag>
+                                                </NSpace>
+                                                <NDivider/>
+                                                <NTag type="warning">{{ formatCurrency(book.DONGIA) }} / quyển</NTag>
                                             </template>
                                         </NThing>
                                     </NGi>

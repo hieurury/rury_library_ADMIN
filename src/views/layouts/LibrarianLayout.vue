@@ -64,31 +64,26 @@ watch(() => route.name, (newVal) => {
     }
 });
 const menuRef               =       ref(null);
-const selectedKey           =       ref('librarian-books');
+const selectedKey           =       ref('librarian-home');
 const menuOptions           =       [
     {
         label: () => h(RouterLink, 
             { to: { name: 'librarian-home' } }, 
-            { default: () => 'Trang chủ' }
+            { default: () => 'Quản lý' }
         ),
         key:   'librarian-home',
-        icon:  () => icon('fa-solid fa-gear'),
+        icon:  () => icon('fa-solid fa-home'),
     },
     {
         label: () => h(RouterLink, { to: { name: 'librarian-users-manager' } }, { default: () => 'Thành viên' }),
         key:   'librarian-users-manager',
         icon:  () => icon('fa-solid fa-users'),
     },
-    // {
-    //     label: h(RouterLink, { to: { name: 'librarian-books' } }, { default: () => 'Sách' }),
-    //     key:   'librarian-books',
-    //     icon:  () => icon('fa-solid fa-book'),
-    // },
-    // {
-    //     label: h(RouterLink, { to: { name: 'librarian-categories' } }, { default: () => 'Thể loại' }),
-    //     key:   'librarian-categories',
-    //     icon:  () => icon('fa-solid fa-list'),
-    // },
+    {
+        label: () => h(RouterLink, { to: { name: 'librarian-books' } }, { default: () => 'Quản lý sách' }),
+        key:   'librarian-books',
+        icon:  () => icon('fa-solid fa-book'),
+    },
 ]
 </script>
 

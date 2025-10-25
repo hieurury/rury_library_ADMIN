@@ -42,9 +42,23 @@ const deletePackage = async (id) => {
     }
 };
 
+const subscribePackage = async (MADOCGIA, MaGoi) => {
+    try {
+        const response = await axios.put(`${BASE_API}/user/admin/subscribe-package`, {
+            MADOCGIA,
+            MaGoi
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error subscribing package:", error);
+        throw error;
+    }
+};
+
 export {
     getAllPackages,
     createPackage,
     updatePackage,
+    subscribePackage,
     deletePackage
 };
