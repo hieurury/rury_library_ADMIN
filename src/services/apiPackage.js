@@ -7,7 +7,6 @@ const getAllPackages = async () => {
         const response = await axios.get(`${BASE_API}/package/all`);
         return response.data;
     } catch (error) {
-        console.error("Error fetching packages:", error);
         throw error;
     }
 };
@@ -17,7 +16,6 @@ const createPackage = async (packageData) => {
         const response = await axios.post(`${BASE_API}/package/add`, packageData);
         return response.data;
     } catch (error) {
-        console.error("Error creating package:", error);
         throw error;
     }
 };
@@ -27,7 +25,6 @@ const updatePackage = async (id, packageData) => {
         const response = await axios.put(`${BASE_API}/package/update/${id}`, packageData);
         return response.data;
     } catch (error) {
-        console.error("Error updating package:", error);
         throw error;
     }
 };
@@ -37,7 +34,6 @@ const deletePackage = async (id) => {
         const response = await axios.delete(`${BASE_API}/package/delete/${id}`);
         return response.data;
     } catch (error) {
-        console.error("Error deleting package:", error);
         throw error;
     }
 };
@@ -50,7 +46,6 @@ const subscribePackage = async (MADOCGIA, MaGoi) => {
         });
         return response.data;
     } catch (error) {
-        console.error("Error subscribing package:", error);
         throw error;
     }
 };

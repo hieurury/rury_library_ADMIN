@@ -7,7 +7,6 @@ const getAllBooks = async () => {
     const response = await axios.get(`${BASE_API}/sach/all`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching books:", error);
     throw error;
   }
 };
@@ -17,7 +16,6 @@ const getBookTemplate = async (MASACH) => {
     const response = await axios.get(`${BASE_API}/sach/template/${MASACH}`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching book template:", error);
     throw error;
   }
 };
@@ -27,7 +25,6 @@ const updateBook = async (id, bookData) => {
         const response = await axios.put(`${BASE_API}/sach/admin/update/${id}`, bookData);
         return response.data;
     } catch (error) {
-        console.error("Error updating book:", error);
         throw error;
     }
 };

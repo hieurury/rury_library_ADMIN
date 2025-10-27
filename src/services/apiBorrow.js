@@ -6,8 +6,8 @@ const getAllBorrows = async () => {
     const response = await axios.get(`${BASE_API}/borrow/admin/all`);
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu mượn sách:', error);
     throw error;
+  }
   }
 };
 
@@ -16,8 +16,8 @@ const getBorrowWithBillId = async (billId) => {
     const response = await axios.get(`${BASE_API}/borrow/${billId}`);
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu mượn sách theo billId:', error);
     throw error;
+  }
   }
 };
 
@@ -26,8 +26,8 @@ const getBorrowsWithUserId = async (userId) => {
     const response = await axios.get(`${BASE_API}/borrow/user/${userId}`);
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu mượn sách theo userId:', error);
     throw error;
+  }
   }
 };
 
@@ -36,8 +36,8 @@ const createBorrow = async (borrowData) => {
     const response = await axios.post(`${BASE_API}/borrow/add`, borrowData);
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi tạo mượn sách:', error);
     throw error;
+  }
   }
 };
 
@@ -46,8 +46,8 @@ const returnBook = async (returnData) => {
     const response = await axios.put(`${BASE_API}/borrow/admin/return`, returnData);
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi trả sách:', error);
     throw error;
+  }
   }
 };
 
