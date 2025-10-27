@@ -8,8 +8,7 @@ const getAllBorrows = async () => {
   } catch (error) {
     throw error;
   }
-  }
-};
+}
 
 const getBorrowWithBillId = async (billId) => {
   try {
@@ -18,8 +17,7 @@ const getBorrowWithBillId = async (billId) => {
   } catch (error) {
     throw error;
   }
-  }
-};
+}
 
 const getBorrowsWithUserId = async (userId) => {
   try {
@@ -28,8 +26,7 @@ const getBorrowsWithUserId = async (userId) => {
   } catch (error) {
     throw error;
   }
-  }
-};
+}
 
 const createBorrow = async (borrowData) => {
   try {
@@ -38,8 +35,7 @@ const createBorrow = async (borrowData) => {
   } catch (error) {
     throw error;
   }
-  }
-};
+}
 
 const returnBook = async (returnData) => {
   try {
@@ -48,8 +44,7 @@ const returnBook = async (returnData) => {
   } catch (error) {
     throw error;
   }
-  }
-};
+}
 
 export {
   getAllBorrows,

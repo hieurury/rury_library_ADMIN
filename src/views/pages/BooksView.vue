@@ -73,6 +73,7 @@ onMounted(async () => {
 const allBooks                  =       ref([]);
 const currentBooks              =       ref([]); //danh sách sách đang hiển thị
 const booksView                 =       ref(null); //tham chiếu đến view sách
+const deletingBook              =       ref(null); //state cho xóa sách
 const filterData                =       reactive({
     category: null,
     publisher: null,
@@ -92,12 +93,17 @@ const getAllBooks               =       async () => {
 
 
 const deleteBook                =       async (maSach) => {
+    if (deletingBook.value) return; // Ngăn double click
+    
     try {
+        deletingBook.value      =       maSach;
         const response          =       await axios.delete(`${BASE_API}/sach/admin/delete/${maSach}`);
         message[response.data.status](response.data.message);
         await getAllBooks();
     } catch (error) {
         console.log(error);
+    } finally {
+        deletingBook.value      =       null;
     }
 };
 
@@ -151,7 +157,7 @@ const getAllCategories          =       async () => {
     categoriesOptions.value     =       allcategories.value.map(category => ({
         label: category.TenLoai,
         value: category.MaLoai,
-        icon: `${BASE_API}/${category.Icon}`,
+        icon: `${BASE_API}${category.Icon}`,
     }));
 };
 
@@ -211,6 +217,7 @@ const editFormRef               =       ref(null);
 const selectedBook              =       ref(null);
 const fileListEdit              =       ref([]);
 const previewImageUrlEdit       =       ref('');
+const submittingEdit            =       ref(false);
 
 const editForm                  =       ref({
     bookName: '',
@@ -237,7 +244,7 @@ const openEditModal = (book) => {
         bookPrice: book.DONGIA,
         bookImage: book.HINHANH
     };
-    previewImageUrlEdit.value = `${BASE_API}/${book.HINHANH}`;
+    previewImageUrlEdit.value = `${BASE_API}${book.HINHANH}`;
     fileListEdit.value = [];
     editModalShow.value = true;
 };
@@ -251,7 +258,7 @@ const createPreviewImageUrlEdit = (file) => {
 };
 
 const handleRemoveEdit = (file) => {
-    previewImageUrlEdit.value = `${BASE_API}/${selectedBook.value.HINHANH}`;
+    previewImageUrlEdit.value = `${BASE_API}${selectedBook.value.HINHANH}`;
     return true;
 };
 
@@ -342,32 +349,42 @@ const rulesEdit = {
 };
 
 const submitEditForm = async () => {
+    if (submittingEdit.value) return; // Ngăn double click
+    
     editFormRef.value.validate(async (error) => {
         if (!error) {
-            let imagePath = editForm.value.bookImage;
-            
-            if(fileListEdit.value.length > 0) {
-                imagePath = await uploadImgEdit();
-            }
+            try {
+                submittingEdit.value = true;
+                let imagePath = editForm.value.bookImage;
+                
+                if(fileListEdit.value.length > 0) {
+                    imagePath = await uploadImgEdit();
+                }
 
-            const updatedBook = {
-                TENSACH: editForm.value.bookName,
-                MOTA: editForm.value.bookDescription,
-                DONGIA: editForm.value.bookPrice,
-                SOQUYEN: editForm.value.bookQuantity,
-                NAMXUATBAN: editForm.value.bookPublishedDate,
-                MANXB: editForm.value.bookPublisher,
-                TACGIA: editForm.value.bookAuthor,
-                HINHANH: imagePath,
-                THELOAI: editForm.value.bookCategory
-            };
+                const updatedBook = {
+                    TENSACH: editForm.value.bookName,
+                    MOTA: editForm.value.bookDescription,
+                    DONGIA: editForm.value.bookPrice,
+                    SOQUYEN: editForm.value.bookQuantity,
+                    NAMXUATBAN: editForm.value.bookPublishedDate,
+                    MANXB: editForm.value.bookPublisher,
+                    TACGIA: editForm.value.bookAuthor,
+                    HINHANH: imagePath,
+                    THELOAI: editForm.value.bookCategory
+                };
 
-            const response = await updateBook(selectedBook.value.MASACH, updatedBook);
-            message[response.status](response.message);
+                const response = await updateBook(selectedBook.value.MASACH, updatedBook);
+                message[response.status](response.message);
 
-            if(response.status == 'success') {
-                editModalShow.value = false;
-                await getAllBooks();
+                if(response.status == 'success') {
+                    editModalShow.value = false;
+                    await getAllBooks();
+                }
+            } catch (error) {
+                message.error('Cập nhật sách thất bại!');
+                console.log(error);
+            } finally {
+                submittingEdit.value = false;
             }
         } else {
             message.error('Vui lòng điền đầy đủ thông tin!');
@@ -481,10 +498,12 @@ const customThemeDark = ref({
                                             @negative-click="() => message.info('Hủy xóa')"
                                             positive-text="Xoá"
                                             negative-text="Hủy"
+                                            :disabled="deletingBook === book.MASACH"
                                         >
                                             <template #trigger>
-                                            <NIcon>
-                                                <i class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
+                                            <NIcon :class="{ 'opacity-50': deletingBook === book.MASACH }">
+                                                <i v-if="deletingBook === book.MASACH" class="fa-solid fa-spinner fa-spin text-red-500"></i>
+                                                <i v-else class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
                                             </NIcon>
                                             </template>
                                             Hành động này sẽ xoá đầu sách và toàn bộ bản sao ra khỏi hệ thống, bạn có chắc?
@@ -497,7 +516,7 @@ const customThemeDark = ref({
                                     </NSpace>
                                 </span>
                                 <NGrid :cols="3" x-gap="12" y-gap="12">
-                                    <NGi span="1" :style="`background-image: url(${BASE_API}/${book.HINHANH});`" class="bg-no-repeat bg-center bg-contain"></NGi>
+                                    <NGi span="1" :style="`background-image: url(${BASE_API}${book.HINHANH});`" class="bg-no-repeat bg-center bg-contain"></NGi>
                                     <NGi span="2">
                                         <NThing>
                                             <template #description>
@@ -533,7 +552,7 @@ const customThemeDark = ref({
                                 description="Thiệc sự là không tìm thấy sách nào y vậy thiệc á!"
                             >
                                 <template #icon>
-                                    <NImage style="width: 100px;" :src="`${BASE_API}/public/imgs/default/not-found.svg`"></NImage>
+                                    <NImage style="width: 100px;" :src="`${BASE_API}public/imgs/default/not-found.svg`"></NImage>
                                 </template>
                             </NResult>
                         </NGi>
@@ -671,8 +690,8 @@ const customThemeDark = ref({
         </NSpace>
 
         <template #action>
-            <NButton @click="editModalShow = false">Hủy</NButton>
-            <NButton @click="submitEditForm" type="primary">Lưu thay đổi</NButton>
+            <NButton @click="editModalShow = false" :disabled="submittingEdit">Hủy</NButton>
+            <NButton @click="submitEditForm" type="primary" :loading="submittingEdit" :disabled="submittingEdit">Lưu thay đổi</NButton>
         </template>
     </NModal>
 </template>

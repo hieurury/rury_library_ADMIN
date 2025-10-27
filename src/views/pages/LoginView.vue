@@ -31,6 +31,7 @@ console.log(BASE_API);
 const message           =       useMessage();
 
 const formRef           =       ref(null);
+const loggingIn         =       ref(false);
 const modelRef          =       ref({
     msnv: null,
     password: null,
@@ -46,21 +47,31 @@ onMounted(() => {
 //==========> Liên quan đến form
 
 function buttonValidate(e) {
+  if (loggingIn.value) return; // Ngăn double click
+  
   e.preventDefault();
   formRef.value?.validate(async (errors) => {
     if (!errors) {
-      //post data to server
-      const response    =   await axios.post(`${BASE_API}/account/login`, modelRef.value);
-      message[response.data.status](response.data.message);
+      try {
+        loggingIn.value = true;
+        //post data to server
+        const response    =   await axios.post(`${BASE_API}/account/admin/login`, modelRef.value);
+        message[response.data.status](response.data.message);
 
-      //check phan hoi
-      if (response.data.status === "success") {
-        setAccount(response.data.account);
-        if(response.data.account.ChucVu === "Admin") {
-            router.push({ name: 'admin-home' });
-        } else if (response.data.account.ChucVu === "Librarian") {
-            router.push({ name: 'librarian-home' });
+        //check phan hoi
+        if (response.data.status === "success") {
+          setAccount(response.data.account);
+          if(response.data.account.ChucVu === "Admin") {
+              router.push({ name: 'admin-home' });
+          } else if (response.data.account.ChucVu === "Librarian") {
+              router.push({ name: 'librarian-home' });
+          }
         }
+      } catch (error) {
+        message.error("Đăng nhập thất bại");
+        console.log(error);
+      } finally {
+        loggingIn.value = false;
       }
     } else {
       message.error("Thông tin không hợp lệ");
@@ -117,7 +128,7 @@ const rules             =       {
                     <NInput class="bg-transparent" v-model:value="modelRef.password" type="password" placeholder="Enter your password" />
                 </NFormItem>
                 <NFormItem>
-                    <NButton @click="buttonValidate" type="primary">Login</NButton>
+                    <NButton @click="buttonValidate" type="primary" :loading="loggingIn" :disabled="loggingIn">Login</NButton>
                 </NFormItem>
             </NForm>
         </NSpace>

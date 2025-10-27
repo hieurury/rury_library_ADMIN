@@ -61,6 +61,7 @@ onMounted(async () => {
 //danh sách file
 //form
 const formRef               =       ref(null);
+const submittingForm        =       ref(false);
 //dữ liệu form
 const modelForm             =       ref({
     bookName: '',
@@ -125,7 +126,7 @@ const getCategories          =       async () => {
     CategoriesOptions.value  =       allcategories.value.map(category => ({
         label: `${category.TenLoai}`,
         value: category.MaLoai,
-        Icon: `${BASE_API}/${category.Icon}` 
+        Icon: `${BASE_API}${category.Icon}` 
     }));
 };
 
@@ -267,41 +268,48 @@ const rules = {
 
 //==========> Liên quan đến submit form
 const submitForm            =       async () => {
+    if (submittingForm.value) return; // Ngăn double click
+    
     formRef.value.validate(async (error) => {
         if (!error) {
-            const imagePath   =       await uploadImg();
-            modelForm.value.bookImage    =       imagePath;
+            try {
+                submittingForm.value = true;
+                const imagePath   =       await uploadImg();
+                modelForm.value.bookImage    =       imagePath;
 
-            const newBook    =       {
-                TENSACH: modelForm.value.bookName,
-                MOTA: modelForm.value.bookDescription,
-                DONGIA: modelForm.value.bookPrice,
-                SOQUYEN: modelForm.value.bookQuantity,
-                NAMXUATBAN: modelForm.value.bookPublishedDate,
-                MANXB: modelForm.value.bookPublisher,
-                TACGIA: modelForm.value.bookAuthor,
-                HINHANH: modelForm.value.bookImage,
-                THELOAI: modelForm.value.bookCategory
-            };
-
-            const response    =       await axios.post(`${BASE_API}/sach/admin/create`, newBook);
-            message[response.data.status](response.data.message);
-            if(response.data.status == 'success') {
-                //reset form
-                modelForm.value  =       {
-                    bookName: '',
-                    bookDescription: '',
-                    bookAuthor: '',
-                    bookPublisher: null,
-                    bookPublishedDate: Date.now(),
-                    bookCategory: [],
-                    bookQuantity: 1,
-                    bookPrice: 1000,
-                    bookImage: ''
+                const newBook    =       {
+                    TENSACH: modelForm.value.bookName,
+                    MOTA: modelForm.value.bookDescription,
+                    DONGIA: modelForm.value.bookPrice,
+                    SOQUYEN: modelForm.value.bookQuantity,
+                    NAMXUATBAN: modelForm.value.bookPublishedDate,
+                    MANXB: modelForm.value.bookPublisher,
+                    TACGIA: modelForm.value.bookAuthor,
+                    HINHANH: modelForm.value.bookImage,
+                    THELOAI: modelForm.value.bookCategory
                 };
-                fileList.value          =       [];
-                previewImageUrl.value   =       '';
-                formRef.value.resetFields();
+
+                const response    =       await axios.post(`${BASE_API}/sach/admin/create`, newBook);
+                message[response.data.status](response.data.message);
+                if(response.data.status == 'success') {
+                    //reset form
+                    modelForm.value  =       {
+                        bookName: '',
+                        bookDescription: '',
+                        bookAuthor: '',
+                        bookPublisher: null,
+                        bookPublishedDate: Date.now(),
+                        bookCategory: [],
+                        bookQuantity: 1,
+                        bookPrice: 1000,
+                        bookImage: ''
+                    };
+                    fileList.value          =       [];
+                    previewImageUrl.value   =       '';
+                    formRef.value.resetFields();
+                }
+            } finally {
+                submittingForm.value = false;
             }
         } else {
             message.error('Vui lòng điền đầy đủ thông tin!');
@@ -395,7 +403,7 @@ const submitForm            =       async () => {
                                 </n-upload>
                             </NFormItem>
                             <NFormItem>
-                                <NButton @click="submitForm" type="primary">Tạo danh mục</NButton>
+                                <NButton @click="submitForm" type="primary" :loading="submittingForm" :disabled="submittingForm">Thêm sách</NButton>
                             </NFormItem>
                         </NForm>
                     </NSpace>

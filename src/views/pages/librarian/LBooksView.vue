@@ -199,7 +199,7 @@ const getAllCategories = async () => {
     categoriesOptions.value = allcategories.value.map(category => ({
         label: category.TenLoai,
         value: category.MaLoai,
-        icon: `${BASE_API}/${category.Icon}`,
+        icon: `${BASE_API}${category.Icon}`,
     }));
 };
 
@@ -454,7 +454,7 @@ const formatPrice = (price) => {
                                 @click="openDetailModal(book)"
                             >
                                 <NGrid :cols="5" x-gap="12" y-gap="12">
-                                    <NGi span="2" :style="`background-image: url(${BASE_API}/${book.HINHANH});`" class="bg-no-repeat bg-center bg-contain min-h-[200px]"></NGi>
+                                    <NGi span="2" :style="`background-image: url(${BASE_API}${book.HINHANH});`" class="bg-no-repeat bg-center bg-contain min-h-[200px]"></NGi>
                                     <NGi span="3">
                                         <NThing>
                                             <template #description>
@@ -512,7 +512,7 @@ const formatPrice = (price) => {
                                 description="Không có sách nào phù hợp với bộ lọc của bạn!"
                             >
                                 <template #icon>
-                                    <NImage style="width: 100px;" :src="`${BASE_API}/public/imgs/default/not-found.svg`"></NImage>
+                                    <NImage style="width: 100px;" :src="`${BASE_API}public/imgs/default/not-found.svg`"></NImage>
                                 </template>
                             </NResult>
                         </NGi>
@@ -545,7 +545,7 @@ const formatPrice = (price) => {
                 <NGrid cols="4" x-gap="12" y-gap="12">
                     <NGi span="1">
                         <NImage 
-                            :src="`${BASE_API}/${selectedBook.HINHANH}`" 
+                            :src="`${BASE_API}${selectedBook.HINHANH}`" 
                             class="w-full rounded-lg shadow-lg"
                             :img-props="{ style: 'object-fit: cover;' }"
                         />

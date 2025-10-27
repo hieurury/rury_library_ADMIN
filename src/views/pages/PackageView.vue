@@ -68,13 +68,20 @@ onMounted(async () => {
 });
 
 //==========> Xóa gói
+const deletingPackage = ref(null);
+
 const handleDeletePackage = async (id, packageName) => {
+    if (deletingPackage.value) return; // Ngăn double click
+    
     try {
+        deletingPackage.value = id;
         const response = await deletePackage(id);
         message[response.status](response.message);
         await loadPackages();
     } catch (error) {
         message.error('Lỗi khi xóa gói');
+    } finally {
+        deletingPackage.value = null;
     }
 };
 //<========== Xóa gói
@@ -85,6 +92,7 @@ const editFormRef = ref(null);
 const selectedPackage = ref(null);
 const fileListEdit = ref([]);
 const previewBadgeUrlEdit = ref('');
+const submittingEdit = ref(false);
 
 const editForm = ref({
     packageName: '',
@@ -189,25 +197,28 @@ const rulesEdit = {
 };
 
 const submitEditForm = async () => {
+    if (submittingEdit.value) return; // Ngăn double click
+    
     editFormRef.value.validate(async (error) => {
         if (!error) {
-            let badgePath = editForm.value.badge;
-            
-            if (fileListEdit.value.length > 0) {
-                badgePath = await uploadBadgeEdit();
-            }
-
-            const updatedData = {
-                TenGoi: editForm.value.packageName,
-                SoSachToiDa: editForm.value.maxBooks,
-                ThoiHanMuon: editForm.value.borrowDuration,
-                Gia: editForm.value.price,
-                QuyenLoi: editForm.value.benefits.filter(b => b && b.trim() !== ''),
-                ThoiHanGoi: editForm.value.packageDuration,
-                HuyHieu: badgePath
-            };
-
             try {
+                submittingEdit.value = true;
+                let badgePath = editForm.value.badge;
+                
+                if (fileListEdit.value.length > 0) {
+                    badgePath = await uploadBadgeEdit();
+                }
+
+                const updatedData = {
+                    TenGoi: editForm.value.packageName,
+                    SoSachToiDa: editForm.value.maxBooks,
+                    ThoiHanMuon: editForm.value.borrowDuration,
+                    Gia: editForm.value.price,
+                    QuyenLoi: editForm.value.benefits.filter(b => b && b.trim() !== ''),
+                    ThoiHanGoi: editForm.value.packageDuration,
+                    HuyHieu: badgePath
+                };
+
                 const response = await updatePackage(selectedPackage.value._id, updatedData);
                 message[response.status](response.message);
                 
@@ -217,6 +228,8 @@ const submitEditForm = async () => {
                 }
             } catch (error) {
                 message.error(error.response?.data?.message || 'Lỗi khi cập nhật gói');
+            } finally {
+                submittingEdit.value = false;
             }
         } else {
             message.error('Vui lòng điền đầy đủ thông tin!');
@@ -380,7 +393,7 @@ const customThemeDark = ref({
                     <Chart v-if="!loading && allPackages.length > 0" :options="chartOptions" />
                     <NResult v-else-if="!loading && allPackages.length === 0" title="Chưa có dữ liệu" description="Chưa có gói nào để thống kê">
                         <template #icon>
-                            <NImage style="width: 100px;" :src="`${BASE_API}/public/imgs/default/not-found.svg`"></NImage>
+                            <NImage style="width: 100px;" :src="`${BASE_API}public/imgs/default/not-found.svg`"></NImage>
                         </template>
                     </NResult>
                 </div>
@@ -401,10 +414,12 @@ const customThemeDark = ref({
                                             @negative-click="() => message.info('Hủy xóa')"
                                             positive-text="Xóa"
                                             negative-text="Hủy"
+                                            :disabled="deletingPackage === pkg._id"
                                         >
                                             <template #trigger>
-                                                <NIcon>
-                                                    <i class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
+                                                <NIcon :class="{ 'opacity-50': deletingPackage === pkg._id }">
+                                                    <i v-if="deletingPackage === pkg._id" class="fa-solid fa-spinner fa-spin text-red-500"></i>
+                                                    <i v-else class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
                                                 </NIcon>
                                             </template>
                                             {{ pkg.SubscriberCount > 0 
@@ -468,7 +483,7 @@ const customThemeDark = ref({
                                 description="Hãy thêm gói thành viên mới để bắt đầu!"
                             >
                                 <template #icon>
-                                    <NImage style="width: 100px;" :src="`${BASE_API}/public/imgs/default/not-found.svg`"></NImage>
+                                    <NImage style="width: 100px;" :src="`${BASE_API}public/imgs/default/not-found.svg`"></NImage>
                                 </template>
                             </NResult>
                         </NGi>
@@ -634,8 +649,8 @@ const customThemeDark = ref({
             </NSpace>
     
             <template #action>
-                <NButton @click="editModalShow = false">Hủy</NButton>
-                <NButton @click="submitEditForm" type="primary">Lưu thay đổi</NButton>
+                <NButton @click="editModalShow = false" :disabled="submittingEdit">Hủy</NButton>
+                <NButton @click="submitEditForm" type="primary" :loading="submittingEdit" :disabled="submittingEdit">Lưu thay đổi</NButton>
             </template>
         </NModal>
     </NConfigProvider>

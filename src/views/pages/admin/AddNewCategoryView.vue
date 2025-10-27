@@ -41,6 +41,7 @@ const previewUrl            =       ref('/imgs/book.svg');
 const fileList              =       ref([]);
 //form
 const formRef               =       ref(null);
+const submittingForm        =       ref(false);
 //dữ liệu form
 const modelForm             =       ref({
     categoryName: '',
@@ -170,41 +171,51 @@ async function beforeUpload(data) {
 
 //check form trước khi gửi server
 function submitForm() {
+    if (submittingForm.value) return; // Ngăn double click
+    
     formRef.value?.validate(async (error) => {
         if (!error) {
-            //lấy đường dẫn icon và gán vào modelForm
-            const icon      =       await uploadIcon();
-            modelForm.value.categoryImage = icon;
-            //tạo một danh mục để gửi
-            const postData  =       {
-                TenLoai: modelForm.value.categoryName,
-                MoTa: modelForm.value.categoryDescription,
-                Color: modelForm.value.categoryColor,
-                Icon: modelForm.value.categoryImage
-            }
-            //gửi dữ liệu đi
-            const response  =       await axios.post(`${BASE_API}/the-loai/create`, postData);
-            message[response.data.status](response.data.message);
+            try {
+                submittingForm.value = true;
+                //lấy đường dẫn icon và gán vào modelForm
+                const icon      =       await uploadIcon();
+                modelForm.value.categoryImage = icon;
+                //tạo một danh mục để gửi
+                const postData  =       {
+                    TenLoai: modelForm.value.categoryName,
+                    MoTa: modelForm.value.categoryDescription,
+                    Color: modelForm.value.categoryColor,
+                    Icon: modelForm.value.categoryImage
+                }
+                //gửi dữ liệu đi
+                const response  =       await axios.post(`${BASE_API}/the-loai/create`, postData);
+                message[response.data.status](response.data.message);
 
-            //kiểm tra thành công
-            if(response.data.status === 'success') {
-                //tải lại danh sách danh mục
-                await loadCategories();
-                //reset form
-                modelForm.value = {
-                    categoryName: '',
-                    categoryDescription: '',
-                    categoryColor: '#4E3603',
-                    categoryImage: ''
-                };
-                fileList.value = [];
-                previewUrl.value = '/imgs/book.svg';
+                //kiểm tra thành công
+                if(response.data.status === 'success') {
+                    //tải lại danh sách danh mục
+                    await loadCategories();
+                    //reset form
+                    modelForm.value = {
+                        categoryName: '',
+                        categoryDescription: '',
+                        categoryColor: '#4E3603',
+                        categoryImage: ''
+                    };
+                    fileList.value = [];
+                    previewUrl.value = '/imgs/book.svg';
+                    formRef.value.restoreValidation();
+                }
+            } catch (error) {
+                message.error('Thêm danh mục thất bại!');
+                console.log(error);
+            } finally {
+                submittingForm.value = false;
             }
         } else {
-            message.error('Vui lòng kiểm tra lại thông tin!');
-            return false;
+            message.error('Vui lòng điền đầy đủ thông tin');
         }
-    });
+    })
 }
 </script>
 
@@ -252,7 +263,7 @@ function submitForm() {
                                 </n-upload>
                             </NFormItem>
                             <NFormItem>
-                                <NButton @click="submitForm" type="primary">Tạo danh mục</NButton>
+                                <NButton @click="submitForm" type="primary" :loading="submittingForm" :disabled="submittingForm">Tạo danh mục</NButton>
                             </NFormItem>
                         </NForm>
                     </NSpace>
@@ -287,7 +298,7 @@ function submitForm() {
                                 <NGi v-for="(category, index) in categories" :key="index" :span="categories.length == 1 ? 2 : 1">
                                     <NListItem class="dark:bg-gray-600/20 bg-transparent shadow rounded-md p-2">
                                         <NGrid :cols="3" x-gap="12" y-gap="12">
-                                            <NGi span="1" :style="{backgroundImage: `url('${BASE_API}/${category.Icon}')`}" class="bg-no-repeat bg-center bg-contain"></NGi>
+                                            <NGi span="1" :style="{backgroundImage: `url('${BASE_API}${category.Icon}')`}" class="bg-no-repeat bg-center bg-contain"></NGi>
                                             <NGi span="2">
                                                 <NThing :title="category.TenLoai">
                                                     <template #description>
