@@ -23,6 +23,8 @@ import {
     NThing,
     NEllipsis,
     NEmpty,
+    NPopconfirm,
+    NCheckbox,
     useMessage
 }                           from 'naive-ui'
 import { 
@@ -49,6 +51,10 @@ import {
 import {
     getAllReaders
 }                           from '../../../services/apiReader.js'
+import {
+    getPendingPickupBills,
+    confirmPickup
+}                           from '../../../services/apiBill.js'
 
 //================== GLOBAL VARIABLES ==================//
 const message               = useMessage();
@@ -66,6 +72,12 @@ const selectedReader        = ref(null)
 const selectedReturnReader  = ref(null)
 const selectedReturnBook    = ref(null)
 const listSelectBookReturn  = ref([])
+
+//==lấy sách
+const pendingPickupBills    = ref([])
+const selectedPickupBill    = ref(null)
+const selectedPickupBooks   = ref([])
+const selectAllPickupBooks  = ref(false)
 
 //==đồng bộ tab
 const activeTab             = ref('borrow')
@@ -104,12 +116,42 @@ const selectedReturnBooksInfo = computed(() => {
         }
     })
 })
+
+// Computed cho tab lấy sách
+const selectedPickupBillInfo = computed(() => {
+    if (!selectedPickupBill.value) return null
+    return pendingPickupBills.value.find(bill => bill.MABILL === selectedPickupBill.value)
+})
+
+const selectedPickupBooksInfo = computed(() => {
+    if (!selectedPickupBooks.value || selectedPickupBooks.value.length === 0) return []
+    const billInfo = selectedPickupBillInfo.value
+    if (!billInfo || !billInfo.PHIEUWAITING) return []
+    
+    return selectedPickupBooks.value.map(maphieu => {
+        const phieu = billInfo.PHIEUWAITING.find(p => p.MAPHIEU === maphieu)
+        return {
+            maphieu: maphieu,
+            bookName: phieu?.SACH?.TENSACH || 'N/A',
+            author: phieu?.SACH?.TACGIA || 'N/A',
+            maBanSao: phieu?.MA_BANSAO || 'N/A'
+        }
+    })
+})
+
+const availablePickupBooks = computed(() => {
+    if (!selectedPickupBillInfo.value || !selectedPickupBillInfo.value.PHIEUWAITING) return []
+    return selectedPickupBillInfo.value.PHIEUWAITING.map(phieu => ({
+        label: `${phieu.SACH?.TENSACH || 'N/A'} - ${phieu.MA_BANSAO}`,
+        value: phieu.MAPHIEU
+    }))
+})
+
 //<========== Computed để hiển thị thông tin đã chọn
 
 const loadBorrowBookWithReader = async () => {
     const listBook = []
     const response = await getBorrowsWithUserId(selectedReturnReader.value);
-    // Chỉ lấy những sách đang mượn (chưa trả)
     const borrowingBooks = response.data.filter(borrow => borrow.TINHTRANG === 'borrowing');
     borrowingBooks.forEach(borrow => {
         const MASACH = borrow.MA_BANSAO.split('T')[0].trim();
@@ -119,7 +161,6 @@ const loadBorrowBookWithReader = async () => {
             value: borrow.MAPHIEU,
         })
     })
-    console.log(listBook);
     listSelectBookReturn.value = listBook;
 }
 
@@ -129,10 +170,26 @@ watch(selectedReturnReader, async (newVal) => {
     }
 });
 
+// Watch cho tab lấy sách - khi chọn bill khác thì reset selection
+watch(selectedPickupBill, () => {
+    selectedPickupBooks.value = []
+    selectAllPickupBooks.value = false
+})
+
+// Watch cho checkbox select all
+watch(selectAllPickupBooks, (newVal) => {
+    if (newVal && availablePickupBooks.value.length > 0) {
+        selectedPickupBooks.value = availablePickupBooks.value.map(b => b.value)
+    } else if (!newVal) {
+        selectedPickupBooks.value = []
+    }
+})
+
 onMounted(async () => {
     await getAllBooksData()
     await getAllBorrowsData()
     await getAllReadersData()
+    await loadPendingPickupBills()
     loadBooksSelect()
 })
 
@@ -145,7 +202,7 @@ const getAllBorrowsData = async () => {
         const response = await getAllBorrows()
         allBorrows.value = response.data
     } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu mượn sách:', error)
+        message.error('Không thể tải dữ liệu mượn sách')
     }
 }
 
@@ -155,16 +212,15 @@ const getAllBooksData = async () => {
         const response = await getAllBooks()
         allBooks.value = response.data
     } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu sách:', error)
+        message.error('Không thể tải dữ liệu sách')
     }
 }
 
 
 //lấy các sách đã mượn trong ngày
-
-const borrowedBooksToday    = computed(() => {
+const borrowedBooksToday = computed(() => {
     if(allBorrows.value.length === 0) return []
-    const today               = new Date()
+    const today = new Date()
     const todayDate = today.toLocaleDateString('vi-VN').split('/').reverse().join('-')
     
     return allBorrows.value.filter(borrow => {
@@ -173,11 +229,11 @@ const borrowedBooksToday    = computed(() => {
         return borrowDateStr === todayDate && borrow.TINHTRANG === 'borrowing'
     })
 })
-//lấy các sách trả trong ngày
 
-const returnedBooksToday    = computed(() => {
+//lấy các sách trả trong ngày
+const returnedBooksToday = computed(() => {
     if(allBorrows.value.length === 0) return []
-    const today               = new Date()
+    const today = new Date()
     const todayDate = today.toLocaleDateString('vi-VN').split('/').reverse().join('-')
     
     return allBorrows.value.filter(borrow => {
@@ -187,12 +243,11 @@ const returnedBooksToday    = computed(() => {
         return returnDateStr === todayDate && borrow.TINHTRANG === 'returned'
     })
 })
-//lấy sách quá hạn trả mà chưa trả
-//NGAYTRA > NGAYHANTRA && TINHTRANG === 'borrowing'
 
+//lấy sách quá hạn trả mà chưa trả
 const overdueBooks = computed(() => {
     if(allBorrows.value.length === 0) return []
-    const today               = new Date()
+    const today = new Date()
     return allBorrows.value.filter(borrow => {
         const dueDate = new Date(borrow.NGAYHANTRA)
         return dueDate < today && borrow.TINHTRANG === 'borrowing'
@@ -215,7 +270,7 @@ const getAllReadersData = async () => {
         const response = await getAllReaders()
         allReaders.value = response.data
     } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu đọc giả:', error)
+        message.error('Không thể tải dữ liệu đọc giả')
     }
 }
 //<========== Liên quan đến đọc giả
@@ -231,7 +286,7 @@ const loadBooksSelect = () => {
         depth: 1,
         name: book.TENSACH,
         isLeaf: false,
-        children: undefined // Thêm này để Naive UI biết cần load
+        children: undefined
     }))
 }
 
@@ -250,7 +305,6 @@ const loadTemplate = async (parent) => {
     return template;
 }
 
-// Render label với tag phía sau
 const renderLabelSelect = (node) => {
     const option = node.option;
     if(option.depth === 2) {
@@ -276,10 +330,7 @@ const renderLabelSelect = (node) => {
 async function handleLoad(option) {
     const children = await loadTemplate(option);
     option.children = children;
-    
-    // Trigger reactivity bằng cách tạo một bản copy mới
     booksSelect.value = [...booksSelect.value];
-    
     return Promise.resolve();
 }
 
@@ -288,51 +339,81 @@ async function handleLoad(option) {
 
 //==========> Xác nhận mượn sách
 const submitBorrow = async () => {
-    //lập qua danh sách sách mượn, promise all
     const data = {
         MADOCGIA: selectedReader.value,
         LIST_MA_BANSAO: listSelectedBooks.value,
     }
     const response = await createBorrow(data);
     message[response.status](response.message);
-    if(response.status === 'success') {
-        message.success('Xác nhận mượn sách thành công!');
-    } else {
-    }
 }
 
 const submitReturn = async () => {
-    //lập qua danh sách sách mượn, promise all
     const data = {
         LIST_MAPHIEU: selectedReturnBook.value,
     }
     const response = await returnBook(data);
     message[response.status](response.message);
-    if(response.status === 'success') {
-        message.success('Xác nhận trả sách thành công!');
-    } else {
-    }
 }
 //<========== Xác nhận mượn sách
 
+//==========> Xử lý tab lấy sách
+const loadPendingPickupBills = async () => {
+    try {
+        const response = await getPendingPickupBills()
+        pendingPickupBills.value = response.data
+    } catch (error) {
+        message.error('Không thể tải danh sách bills chờ lấy sách')
+    }
+}
 
+const selectPendingBills = computed(() => {
+    if(!pendingPickupBills.value || pendingPickupBills.value.length === 0) return []
+    return pendingPickupBills.value.map(bill => ({
+        label: `${bill.MABILL} - ${bill.DOCGIA?.HOLOT} ${bill.DOCGIA?.TEN} - ${bill.LOAITHANHTOAN === 'cash' ? 'Tiền mặt' : 'Online'}`,
+        value: bill.MABILL
+    }))
+})
 
-
-
-
-
-
+const handleConfirmPickup = async () => {
+    try {
+        if (!selectedPickupBill.value || selectedPickupBooks.value.length === 0) {
+            message.warning('Vui lòng chọn bill và sách cần lấy')
+            return
+        }
+        
+        const billInfo = selectedPickupBillInfo.value
+        const confirmPayment = billInfo.LOAITHANHTOAN === 'cash' && billInfo.TRANGTHAI === false
+        
+        const data = {
+            MABILL: selectedPickupBill.value,
+            LIST_MAPHIEU: selectedPickupBooks.value,
+            confirmPayment: confirmPayment
+        }
+        
+        const response = await confirmPickup(data)
+        message[response.status](response.message)
+        
+        if (response.status === 'success') {
+            selectedPickupBill.value = null
+            selectedPickupBooks.value = []
+            selectAllPickupBooks.value = false
+            await loadPendingPickupBills()
+        }
+    } catch (error) {
+        message.error(error.response?.data?.message || 'Có lỗi xảy ra khi xác nhận lấy sách')
+    }
+}
+//<========== Xử lý tab lấy sách
 
 const customThemeLight = ref({
-  Statistic: {
-    valueTextColor: '#ffffff',
-    labelTextColor: '#ffffff'
-  },
+    Statistic: {
+        valueTextColor: '#ffffff',
+        labelTextColor: '#ffffff'
+    },
 });
 
-const customThemeDark = ref({
+const customThemeDark = ref({})
 
-})
 </script>
 
 
@@ -403,6 +484,60 @@ const customThemeDark = ref({
                                 </n-form>
                                 <n-button @click="submitReturn" type="primary" block secondary strong>
                                 Xác nhận trả
+                                </n-button>
+                            </n-tab-pane>
+                            <n-tab-pane name="pickup" tab="Lấy sách">
+                                <n-form>
+                                <n-form-item-row label="Bill">
+                                    <NSelect 
+                                    v-model:value="selectedPickupBill"
+                                    :options="selectPendingBills"
+                                    clearable 
+                                    filterable 
+                                    placeholder="Chọn bill cần lấy sách"/>
+                                </n-form-item-row>
+                                <n-form-item-row label="Sách cần lấy">
+                                    <NSpace vertical class="w-full">
+                                        <NCheckbox 
+                                            v-model:checked="selectAllPickupBooks"
+                                            :disabled="!selectedPickupBill || availablePickupBooks.length === 0"
+                                        >
+                                            Chọn tất cả
+                                        </NCheckbox>
+                                        <NSelect 
+                                        v-model:value="selectedPickupBooks"
+                                        :options="availablePickupBooks"
+                                        :disabled="!selectedPickupBill"
+                                        multiple
+                                        filterable 
+                                        clearable
+                                        placeholder="Chọn các sách cần lấy"
+                                        />
+                                    </NSpace>
+                                </n-form-item-row>
+                                </n-form>
+                                <NPopconfirm
+                                    v-if="selectedPickupBillInfo?.LOAITHANHTOAN === 'cash' && !selectedPickupBillInfo?.TRANGTHAI"
+                                    @positive-click="handleConfirmPickup"
+                                    positive-text="Đã thanh toán"
+                                    negative-text="Hủy"
+                                >
+                                    <template #trigger>
+                                        <n-button type="primary" block secondary strong>
+                                            Xác nhận lấy sách
+                                        </n-button>
+                                    </template>
+                                    Xác nhận đọc giả đã thanh toán tiền mặt?
+                                </NPopconfirm>
+                                <n-button 
+                                    v-else
+                                    @click="handleConfirmPickup" 
+                                    type="primary" 
+                                    block 
+                                    secondary 
+                                    strong
+                                >
+                                    Xác nhận lấy sách
                                 </n-button>
                             </n-tab-pane>
                             </n-tabs>
@@ -500,6 +635,80 @@ const customThemeDark = ref({
                                                         <template #description>
                                                             <div class="text-xs text-gray-500 dark:text-gray-400">
                                                                 Mã phiếu: {{ book.maphieu }}
+                                                            </div>
+                                                        </template>
+                                                    </NThing>
+                                                </NListItem>
+                                            </NList>
+                                            <NEmpty v-else description="Chưa chọn sách" size="small" />
+                                        </div>
+                                    </NSpace>
+                                </NTabPane>
+
+                                <!-- Tab lấy sách -->
+                                <NTabPane name="pickup" tab="Lấy sách">
+                                    <NSpace vertical>
+                                        <!-- Thông tin bill và đọc giả -->
+                                        <div v-if="selectedPickupBillInfo" class="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                                            <h4 class="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2">Thông tin Bill</h4>
+                                            <NSpace vertical size="small">
+                                                <div class="text-sm">
+                                                    <span class="font-medium">Mã Bill:</span> 
+                                                    <span class="ml-2">{{ selectedPickupBillInfo.MABILL }}</span>
+                                                </div>
+                                                <div class="text-sm">
+                                                    <span class="font-medium">Đọc giả:</span> 
+                                                    <span class="ml-2">{{ selectedPickupBillInfo.DOCGIA?.HOLOT }} {{ selectedPickupBillInfo.DOCGIA?.TEN }}</span>
+                                                </div>
+                                                <div class="text-sm">
+                                                    <span class="font-medium">Tổng tiền:</span> 
+                                                    <span class="ml-2">{{ selectedPickupBillInfo.TONGTIEN?.toLocaleString() }} đ</span>
+                                                </div>
+                                                <div class="text-sm">
+                                                    <span class="font-medium">Phương thức:</span> 
+                                                    <NTag 
+                                                        :type="selectedPickupBillInfo.LOAITHANHTOAN === 'cash' ? 'warning' : 'success'" 
+                                                        size="small"
+                                                        class="ml-2"
+                                                    >
+                                                        {{ selectedPickupBillInfo.LOAITHANHTOAN === 'cash' ? 'Tiền mặt' : 'Online' }}
+                                                    </NTag>
+                                                </div>
+                                                <div class="text-sm">
+                                                    <span class="font-medium">Trạng thái TT:</span> 
+                                                    <NTag 
+                                                        :type="selectedPickupBillInfo.TRANGTHAI ? 'success' : 'error'" 
+                                                        size="small"
+                                                        class="ml-2"
+                                                    >
+                                                        {{ selectedPickupBillInfo.TRANGTHAI ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                                                    </NTag>
+                                                </div>
+                                            </NSpace>
+                                        </div>
+                                        <NEmpty v-else description="Chưa chọn bill" size="small" />
+
+                                        <NDivider />
+
+                                        <!-- Danh sách sách cần lấy -->
+                                        <div>
+                                            <h4 class="text-sm font-semibold mb-3">
+                                                Sách cần lấy 
+                                                <NTag v-if="selectedPickupBooksInfo.length > 0" type="warning" size="small" :bordered="false">
+                                                    {{ selectedPickupBooksInfo.length }}
+                                                </NTag>
+                                            </h4>
+                                            <NList v-if="selectedPickupBooksInfo.length > 0" bordered>
+                                                <NListItem v-for="(book, index) in selectedPickupBooksInfo" :key="book.maphieu">
+                                                    <NThing>
+                                                        <template #header>
+                                                            <span class="text-sm font-medium">{{ index + 1 }}. {{ book.bookName }}</span>
+                                                        </template>
+                                                        <template #description>
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                                <span>Tác giả: {{ book.author }}</span>
+                                                                <NDivider vertical />
+                                                                <span>Mã bản sao: {{ book.maBanSao }}</span>
                                                             </div>
                                                         </template>
                                                     </NThing>
