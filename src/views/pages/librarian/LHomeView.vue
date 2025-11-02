@@ -72,6 +72,7 @@ const selectedReader        = ref(null)
 const selectedReturnReader  = ref(null)
 const selectedReturnBook    = ref(null)
 const listSelectBookReturn  = ref([])
+const lostBooks             = ref([])
 
 //==lấy sách
 const pendingPickupBills    = ref([])
@@ -108,11 +109,22 @@ const selectedReturnReaderInfo = computed(() => {
 
 const selectedReturnBooksInfo = computed(() => {
     if (!selectedReturnBook.value || selectedReturnBook.value.length === 0) return []
+    const today = new Date();
+    
     return selectedReturnBook.value.map(maphieu => {
         const option = listSelectBookReturn.value.find(opt => opt.value === maphieu)
+        const ngayHanTra = option?.ngayHanTra ? new Date(option.ngayHanTra) : null
+        const soNgayTre = ngayHanTra && ngayHanTra < today 
+            ? Math.ceil((today - ngayHanTra) / (1000 * 60 * 60 * 24)) 
+            : 0
+        
         return {
             maphieu: maphieu,
-            label: option?.label || 'N/A'
+            label: option?.label || 'N/A',
+            isOverdue: option?.isOverdue || false,
+            soNgayTre: soNgayTre,
+            gia: option?.gia || 0,
+            phiTre: soNgayTre > 0 ? (option?.gia || 0) * 1.5 * soNgayTre : 0
         }
     })
 })
@@ -147,18 +159,45 @@ const availablePickupBooks = computed(() => {
     }))
 })
 
+// Computed cho phí vi phạm khi trả sách
+const totalLateFee = computed(() => {
+    return selectedReturnBooksInfo.value.reduce((sum, b) => sum + b.phiTre, 0)
+})
+
+const totalLostBookFee = computed(() => {
+    return selectedReturnBooksInfo.value
+        .filter(b => lostBooks.value.includes(b.maphieu))
+        .reduce((sum, b) => sum + (b.gia * 20), 0)
+})
+
+const totalViolationFee = computed(() => {
+    return totalLateFee.value + totalLostBookFee.value
+})
+
+const hasViolations = computed(() => {
+    return selectedReturnBooksInfo.value.some(b => b.isOverdue) || lostBooks.value.length > 0
+})
+
 //<========== Computed để hiển thị thông tin đã chọn
 
 const loadBorrowBookWithReader = async () => {
     const listBook = []
     const response = await getBorrowsWithUserId(selectedReturnReader.value);
     const borrowingBooks = response.data.filter(borrow => borrow.TINHTRANG === 'borrowing');
+    const today = new Date();
+    
     borrowingBooks.forEach(borrow => {
         const MASACH = borrow.MA_BANSAO.split('T')[0].trim();
         const BOOK = allBooks.value.find(book => book.MASACH === MASACH);
+        const ngayHanTra = new Date(borrow.NGAYHANTRA);
+        const isOverdue = ngayHanTra < today;
+        
         listBook.push({
-            label: `${BOOK.TENSACH} - ${borrow.MA_BANSAO}`,
+            label: `${BOOK.TENSACH} - ${borrow.MA_BANSAO}${isOverdue ? ' ⚠️ TRỄ HẠN' : ''}`,
             value: borrow.MAPHIEU,
+            isOverdue: isOverdue,
+            ngayHanTra: borrow.NGAYHANTRA,
+            gia: borrow.GIA
         })
     })
     listSelectBookReturn.value = listBook;
@@ -167,6 +206,8 @@ const loadBorrowBookWithReader = async () => {
 watch(selectedReturnReader, async (newVal) => {
     if (newVal !== null) {
         await loadBorrowBookWithReader();
+    } else {
+        lostBooks.value = [];
     }
 });
 
@@ -350,9 +391,31 @@ const submitBorrow = async () => {
 const submitReturn = async () => {
     const data = {
         LIST_MAPHIEU: selectedReturnBook.value,
+        LIST_LOST_BOOKS: lostBooks.value
     }
     const response = await returnBook(data);
     message[response.status](response.message);
+    
+    if (response.status === 'success' && response.data) {
+        const { tongPhiTre, tongPhiMat, tongPhi, soViPham } = response.data;
+        
+        let msg = 'Trả sách thành công!';
+        if (tongPhi > 0) {
+            msg += `\nTổng phí: ${tongPhi.toLocaleString()} đ`;
+            if (tongPhiTre > 0) msg += `\n- Phí trễ: ${tongPhiTre.toLocaleString()} đ`;
+            if (tongPhiMat > 0) msg += `\n- Phí mất sách: ${tongPhiMat.toLocaleString()} đ`;
+        }
+        if (soViPham > 0) {
+            msg += `\nSố vi phạm ghi nhận: ${soViPham}`;
+        }
+        
+        message.success(msg);
+        
+        selectedReturnReader.value = null;
+        selectedReturnBook.value = null;
+        lostBooks.value = [];
+        listSelectBookReturn.value = [];
+    }
 }
 //<========== Xác nhận mượn sách
 
@@ -482,8 +545,39 @@ const customThemeDark = ref({})
                                     />
                                 </n-form-item-row>
                                 </n-form>
-                                <n-button @click="submitReturn" type="primary" block secondary strong>
-                                Xác nhận trả
+                                <NPopconfirm
+                                    v-if="hasViolations"
+                                    @positive-click="submitReturn"
+                                    positive-text="Đã thu phí"
+                                    negative-text="Hủy"
+                                >
+                                    <template #trigger>
+                                        <n-button type="primary" block secondary strong>
+                                            Xác nhận trả
+                                        </n-button>
+                                    </template>
+                                    <NSpace vertical size="small">
+                                        <div class="font-semibold">Xác nhận đã thu phí vi phạm:</div>
+                                        <div v-if="totalLateFee > 0">
+                                            • Phí trễ: {{ totalLateFee.toLocaleString() }} đ
+                                        </div>
+                                        <div v-if="totalLostBookFee > 0">
+                                            • Phí mất sách: {{ totalLostBookFee.toLocaleString() }} đ
+                                        </div>
+                                        <div class="font-semibold text-red-600">
+                                            Tổng: {{ totalViolationFee.toLocaleString() }} đ
+                                        </div>
+                                    </NSpace>
+                                </NPopconfirm>
+                                <n-button 
+                                    v-else
+                                    @click="submitReturn" 
+                                    type="primary" 
+                                    block 
+                                    secondary 
+                                    strong
+                                >
+                                    Xác nhận trả
                                 </n-button>
                             </n-tab-pane>
                             <n-tab-pane name="pickup" tab="Lấy sách">
@@ -630,12 +724,40 @@ const customThemeDark = ref({})
                                                 <NListItem v-for="(book, index) in selectedReturnBooksInfo" :key="book.maphieu">
                                                     <NThing>
                                                         <template #header>
-                                                            <span class="text-sm font-medium">{{ index + 1 }}. {{ book.label }}</span>
+                                                            <NSpace align="center">
+                                                                <span class="text-sm font-medium">{{ index + 1 }}. {{ book.label }}</span>
+                                                                <NTag v-if="book.isOverdue" type="error" size="small">
+                                                                    Trễ {{ book.soNgayTre }} ngày
+                                                                </NTag>
+                                                            </NSpace>
                                                         </template>
                                                         <template #description>
-                                                            <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                                Mã phiếu: {{ book.maphieu }}
-                                                            </div>
+                                                            <NSpace vertical size="small" class="text-xs text-gray-500 dark:text-gray-400">
+                                                                <div>Mã phiếu: {{ book.maphieu }}</div>
+                                                                <div v-if="book.isOverdue" class="text-red-500">
+                                                                    Phí trễ: {{ book.phiTre.toLocaleString() }} đ
+                                                                </div>
+                                                                <NCheckbox 
+                                                                    :checked="lostBooks?.includes(book.maphieu) || false"
+                                                                    @update:checked="(checked) => {
+                                                                        if (checked) {
+                                                                            if (!lostBooks.includes(book.maphieu)) {
+                                                                                lostBooks.push(book.maphieu)
+                                                                            }
+                                                                        } else {
+                                                                            const index = lostBooks.indexOf(book.maphieu)
+                                                                            if (index > -1) {
+                                                                                lostBooks.splice(index, 1)
+                                                                            }
+                                                                        }
+                                                                    }"
+                                                                    class="text-red-600"
+                                                                >
+                                                                    <span class="text-red-600 font-medium">
+                                                                        Sách bị mất (Phí: {{ (book.gia * 20).toLocaleString() }} đ)
+                                                                    </span>
+                                                                </NCheckbox>
+                                                            </NSpace>
                                                         </template>
                                                     </NThing>
                                                 </NListItem>

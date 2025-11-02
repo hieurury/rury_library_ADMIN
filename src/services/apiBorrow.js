@@ -37,9 +37,12 @@ const createBorrow = async (borrowData) => {
   }
 }
 
-const returnBook = async (returnData) => {
+const returnBook = async (LIST_MAPHIEU, LIST_LOST_BOOKS) => {
   try {
-    const response = await axios.put(`${BASE_API}/borrow/admin/return`, returnData);
+    const response = await axios.put(`${BASE_API}/borrow/admin/return`, {
+      LIST_MAPHIEU,
+      LIST_LOST_BOOKS
+    });
     return response.data;
   } catch (error) {
     throw error;
