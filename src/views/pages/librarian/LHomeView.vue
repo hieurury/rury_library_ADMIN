@@ -354,26 +354,13 @@ const submitBorrow = async () => {
 
 const submitReturn = async () => {
 
-    const LIST_MAPHIEU      = selectedReturnBook.value,
+    const LIST_MAPHIEU      = selectedReturnBook.value
     const LIST_LOST_BOOKS   = lostBooks.value
 
     const response = await returnBook(LIST_MAPHIEU, LIST_LOST_BOOKS);
     message[response.status](response.message);
     
     if (response.status === 'success' && response.data) {
-        const { tongPhiTre, tongPhiMat, tongPhi, soViPham } = response.data;
-        
-        let msg = 'Trả sách thành công!';
-        if (tongPhi > 0) {
-            msg += `\nTổng phí: ${tongPhi.toLocaleString()} đ`;
-            if (tongPhiTre > 0) msg += `\n- Phí trễ: ${tongPhiTre.toLocaleString()} đ`;
-            if (tongPhiMat > 0) msg += `\n- Phí mất sách: ${tongPhiMat.toLocaleString()} đ`;
-        }
-        if (soViPham > 0) {
-            msg += `\nSố vi phạm ghi nhận: ${soViPham}`;
-        }
-        
-        message.success(msg);
         
         selectedReturnReader.value = null;
         selectedReturnBook.value = null;
