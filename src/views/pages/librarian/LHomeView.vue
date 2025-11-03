@@ -353,11 +353,14 @@ const submitBorrow = async () => {
 }
 
 const submitReturn = async () => {
-    const data = {
-        LIST_MAPHIEU: selectedReturnBook.value,
-        LIST_LOST_BOOKS: lostBooks.value
-    }
-    const response = await returnBook(data);
+
+    const LIST_MAPHIEU      = selectedReturnBook.value,
+    const LIST_LOST_BOOKS   = lostBooks.value
+
+    const response = await returnBook({
+        LIST_MAPHIEU,
+        LIST_LOST_BOOKS
+    });
     message[response.status](response.message);
     
     if (response.status === 'success' && response.data) {
