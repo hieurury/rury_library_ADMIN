@@ -77,8 +77,6 @@ const lostBooks             = ref([])
 //==lấy sách
 const pendingPickupBills    = ref([])
 const selectedPickupBill    = ref(null)
-const selectedPickupBooks   = ref([])
-const selectAllPickupBooks  = ref(false)
 
 //==đồng bộ tab
 const activeTab             = ref('borrow')
@@ -135,30 +133,6 @@ const selectedPickupBillInfo = computed(() => {
     return pendingPickupBills.value.find(bill => bill.MABILL === selectedPickupBill.value)
 })
 
-const selectedPickupBooksInfo = computed(() => {
-    if (!selectedPickupBooks.value || selectedPickupBooks.value.length === 0) return []
-    const billInfo = selectedPickupBillInfo.value
-    if (!billInfo || !billInfo.PHIEUWAITING) return []
-    
-    return selectedPickupBooks.value.map(maphieu => {
-        const phieu = billInfo.PHIEUWAITING.find(p => p.MAPHIEU === maphieu)
-        return {
-            maphieu: maphieu,
-            bookName: phieu?.SACH?.TENSACH || 'N/A',
-            author: phieu?.SACH?.TACGIA || 'N/A',
-            maBanSao: phieu?.MA_BANSAO || 'N/A'
-        }
-    })
-})
-
-const availablePickupBooks = computed(() => {
-    if (!selectedPickupBillInfo.value || !selectedPickupBillInfo.value.PHIEUWAITING) return []
-    return selectedPickupBillInfo.value.PHIEUWAITING.map(phieu => ({
-        label: `${phieu.SACH?.TENSACH || 'N/A'} - ${phieu.MA_BANSAO}`,
-        value: phieu.MAPHIEU
-    }))
-})
-
 // Computed cho phí vi phạm khi trả sách
 const totalLateFee = computed(() => {
     return selectedReturnBooksInfo.value.reduce((sum, b) => sum + b.phiTre, 0)
@@ -213,17 +187,7 @@ watch(selectedReturnReader, async (newVal) => {
 
 // Watch cho tab lấy sách - khi chọn bill khác thì reset selection
 watch(selectedPickupBill, () => {
-    selectedPickupBooks.value = []
-    selectAllPickupBooks.value = false
-})
-
-// Watch cho checkbox select all
-watch(selectAllPickupBooks, (newVal) => {
-    if (newVal && availablePickupBooks.value.length > 0) {
-        selectedPickupBooks.value = availablePickupBooks.value.map(b => b.value)
-    } else if (!newVal) {
-        selectedPickupBooks.value = []
-    }
+    // Không cần reset selection nữa vì lấy tất cả
 })
 
 onMounted(async () => {
@@ -437,19 +401,26 @@ const selectPendingBills = computed(() => {
     }))
 })
 
-const handleConfirmPickup = async () => {
+const handleConfirmPickupAll = async () => {
     try {
-        if (!selectedPickupBill.value || selectedPickupBooks.value.length === 0) {
-            message.warning('Vui lòng chọn bill và sách cần lấy')
+        if (!selectedPickupBill.value) {
+            message.warning('Vui lòng chọn bill')
             return
         }
         
         const billInfo = selectedPickupBillInfo.value
+        if (!billInfo || !billInfo.PHIEUWAITING || billInfo.PHIEUWAITING.length === 0) {
+            message.warning('Bill này không có sách chờ lấy')
+            return
+        }
+        
+        // Lấy tất cả mã phiếu waiting
+        const allPhieuMaList = billInfo.PHIEUWAITING.map(p => p.MAPHIEU)
         const confirmPayment = billInfo.LOAITHANHTOAN === 'cash' && billInfo.TRANGTHAI === false
         
         const data = {
             MABILL: selectedPickupBill.value,
-            LIST_MAPHIEU: selectedPickupBooks.value,
+            LIST_MAPHIEU: allPhieuMaList,
             confirmPayment: confirmPayment
         }
         
@@ -458,8 +429,6 @@ const handleConfirmPickup = async () => {
         
         if (response.status === 'success') {
             selectedPickupBill.value = null
-            selectedPickupBooks.value = []
-            selectAllPickupBooks.value = false
             await loadPendingPickupBills()
         }
     } catch (error) {
@@ -590,48 +559,36 @@ const customThemeDark = ref({})
                                     filterable 
                                     placeholder="Chọn bill cần lấy sách"/>
                                 </n-form-item-row>
-                                <n-form-item-row label="Sách cần lấy">
-                                    <NSpace vertical class="w-full">
-                                        <NCheckbox 
-                                            v-model:checked="selectAllPickupBooks"
-                                            :disabled="!selectedPickupBill || availablePickupBooks.length === 0"
-                                        >
-                                            Chọn tất cả
-                                        </NCheckbox>
-                                        <NSelect 
-                                        v-model:value="selectedPickupBooks"
-                                        :options="availablePickupBooks"
-                                        :disabled="!selectedPickupBill"
-                                        multiple
-                                        filterable 
-                                        clearable
-                                        placeholder="Chọn các sách cần lấy"
-                                        />
-                                    </NSpace>
-                                </n-form-item-row>
                                 </n-form>
                                 <NPopconfirm
                                     v-if="selectedPickupBillInfo?.LOAITHANHTOAN === 'cash' && !selectedPickupBillInfo?.TRANGTHAI"
-                                    @positive-click="handleConfirmPickup"
+                                    @positive-click="handleConfirmPickupAll"
                                     positive-text="Đã thanh toán"
                                     negative-text="Hủy"
                                 >
                                     <template #trigger>
-                                        <n-button type="primary" block secondary strong>
-                                            Xác nhận lấy sách
+                                        <n-button 
+                                            type="primary" 
+                                            block 
+                                            secondary 
+                                            strong
+                                            :disabled="!selectedPickupBill"
+                                        >
+                                            Xác nhận lấy tất cả sách
                                         </n-button>
                                     </template>
                                     Xác nhận đọc giả đã thanh toán tiền mặt?
                                 </NPopconfirm>
                                 <n-button 
                                     v-else
-                                    @click="handleConfirmPickup" 
+                                    @click="handleConfirmPickupAll" 
                                     type="primary" 
                                     block 
                                     secondary 
                                     strong
+                                    :disabled="!selectedPickupBill"
                                 >
-                                    Xác nhận lấy sách
+                                    Xác nhận lấy tất cả sách
                                 </n-button>
                             </n-tab-pane>
                             </n-tabs>
@@ -812,31 +769,31 @@ const customThemeDark = ref({})
 
                                         <NDivider />
 
-                                        <!-- Danh sách sách cần lấy -->
+                                        <!-- Danh sách TẤT CẢ sách chờ lấy -->
                                         <div>
                                             <h4 class="text-sm font-semibold mb-3">
-                                                Sách cần lấy 
-                                                <NTag v-if="selectedPickupBooksInfo.length > 0" type="warning" size="small" :bordered="false">
-                                                    {{ selectedPickupBooksInfo.length }}
+                                                Tất cả sách chờ lấy 
+                                                <NTag v-if="selectedPickupBillInfo?.PHIEUWAITING?.length > 0" type="warning" size="small" :bordered="false">
+                                                    {{ selectedPickupBillInfo.PHIEUWAITING.length }}
                                                 </NTag>
                                             </h4>
-                                            <NList v-if="selectedPickupBooksInfo.length > 0" bordered>
-                                                <NListItem v-for="(book, index) in selectedPickupBooksInfo" :key="book.maphieu">
+                                            <NList v-if="selectedPickupBillInfo?.PHIEUWAITING?.length > 0" bordered>
+                                                <NListItem v-for="(phieu, index) in selectedPickupBillInfo.PHIEUWAITING" :key="phieu.MAPHIEU">
                                                     <NThing>
                                                         <template #header>
-                                                            <span class="text-sm font-medium">{{ index + 1 }}. {{ book.bookName }}</span>
+                                                            <span class="text-sm font-medium">{{ index + 1 }}. {{ phieu.SACH?.TENSACH }}</span>
                                                         </template>
                                                         <template #description>
                                                             <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                                <span>Tác giả: {{ book.author }}</span>
+                                                                <span>Tác giả: {{ phieu.SACH?.TACGIA }}</span>
                                                                 <NDivider vertical />
-                                                                <span>Mã bản sao: {{ book.maBanSao }}</span>
+                                                                <span>Mã bản sao: {{ phieu.MA_BANSAO }}</span>
                                                             </div>
                                                         </template>
                                                     </NThing>
                                                 </NListItem>
                                             </NList>
-                                            <NEmpty v-else description="Chưa chọn sách" size="small" />
+                                            <NEmpty v-else description="Không có sách chờ lấy" size="small" />
                                         </div>
                                     </NSpace>
                                 </NTabPane>
