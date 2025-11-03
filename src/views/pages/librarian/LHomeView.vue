@@ -357,10 +357,7 @@ const submitReturn = async () => {
     const LIST_MAPHIEU      = selectedReturnBook.value,
     const LIST_LOST_BOOKS   = lostBooks.value
 
-    const response = await returnBook({
-        LIST_MAPHIEU,
-        LIST_LOST_BOOKS
-    });
+    const response = await returnBook(LIST_MAPHIEU, LIST_LOST_BOOKS);
     message[response.status](response.message);
     
     if (response.status === 'success' && response.data) {
