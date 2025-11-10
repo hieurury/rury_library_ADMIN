@@ -421,7 +421,9 @@ const submitForm            =       async () => {
                             <NGi span="2">
                                 <NThing>
                                     <template #description>
-                                        <h1 class="text-lg font-semibold dark:text-gray-300 text-white">{{ modelForm.bookName || 'Tên sách' }}</h1>
+                                        <NEllipsis :line-clamp="1">
+                                            <h1 class="text-lg font-semibold dark:text-gray-300 text-white">{{ modelForm.bookName || 'Tên sách' }}</h1>
+                                        </NEllipsis>
                                         <NSpace class="text-sm">
                                             <NEllipsis :line-clamp="1">
                                                 <span class="text-gray-300 text-xs">Tác giả: {{ modelForm.bookAuthor || 'chưa điền'}}</span>
