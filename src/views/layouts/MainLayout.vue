@@ -230,6 +230,21 @@ const menuOptions           =       [
                 icon:  () => icon('fa-solid fa-plus'),
             }
         ]
+    },
+    {
+        label: () => h(
+            RouterLink,
+            {
+                to: {
+                    name: 'admin-users',
+                }
+            },
+            {
+                default: () => 'Người dùng'
+            }
+        ),
+        key:   'admin-users',
+        icon:  () => icon('fa-solid fa-users'),
     }
 ]
 

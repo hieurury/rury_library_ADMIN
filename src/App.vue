@@ -3,6 +3,7 @@ import {
   NConfigProvider, 
   NMessageProvider,
   NNotificationProvider,
+  NDialogProvider,
   darkTheme, 
 }                     from  'naive-ui';
 import { isDark, toggleDark }    from  './hooks/useDark.js';
@@ -47,7 +48,10 @@ onMounted(() => {
   :theme="isDark ? darkTheme : null">
     <NMessageProvider>
       <NNotificationProvider>
+      <NDialogProvider>
+
         <router-view />
+      </NDialogProvider>
       </NNotificationProvider>
     </NMessageProvider>
 </NConfigProvider>

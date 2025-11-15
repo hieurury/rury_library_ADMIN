@@ -14,6 +14,7 @@ import BooksView            from "../views/pages/BooksView.vue";
 import AddNewBookView       from "../views/pages/admin/AddNewBookView.vue";
 import AddNewNXBView        from "../views/pages/admin/AddNewNXBView.vue";
 import AddNewPackageView       from "../views/pages/admin/AddNewPackageView.vue";
+import UsersManagementView  from "../views/pages/admin/UsersManagementView.vue";
 //librarian pages
 import LHomeView            from "../views/pages/librarian/LHomeView.vue";
 import LUsersManagerView    from "../views/pages/librarian/LUsersManagerView.vue";
@@ -110,6 +111,12 @@ const routes = [
                         meta: { requiresAuth: true, roles: ['Admin'], title: 'Add New Package' }
                     }
                 ]
+            },
+            {
+                path: 'users',
+                name: 'admin-users',
+                component: UsersManagementView,
+                meta: { requiresAuth: true, roles: ['Admin'], title: 'Users Management' }
             }
         ]
     },
