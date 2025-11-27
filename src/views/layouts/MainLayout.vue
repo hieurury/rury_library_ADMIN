@@ -245,6 +245,21 @@ const menuOptions           =       [
         ),
         key:   'admin-users',
         icon:  () => icon('fa-solid fa-users'),
+    },
+    {
+        label: () => h(
+            RouterLink,
+            {
+                to: {
+                    name: 'admin-staff',
+                }
+            },
+            {
+                default: () => 'Nhân viên'
+            }
+        ),
+        key:   'admin-staff',
+        icon:  () => icon('fa-solid fa-user-tie'),
     }
 ]
 

@@ -55,6 +55,7 @@ import {
     getPendingPickupBills,
     confirmPickup
 }                           from '../../../services/apiBill.js'
+import { currentAccount }   from '../../../hooks/useAccount.js'
 
 //================== GLOBAL VARIABLES ==================//
 const message               = useMessage();
@@ -345,6 +346,7 @@ async function handleLoad(option) {
 //==========> Xác nhận mượn sách
 const submitBorrow = async () => {
     const data = {
+        MANHANVIEN: currentAccount.value?.MSNV || 'system',
         MADOCGIA: selectedReader.value,
         LIST_MA_BANSAO: listSelectedBooks.value,
     }
@@ -356,8 +358,9 @@ const submitReturn = async () => {
 
     const LIST_MAPHIEU      = selectedReturnBook.value
     const LIST_LOST_BOOKS   = lostBooks.value
-
+    
     const response = await returnBook(LIST_MAPHIEU, LIST_LOST_BOOKS);
+    console.log(response);
     message[response.status](response.message);
     
     if (response.status === 'success' && response.data) {
@@ -589,49 +592,44 @@ const customThemeDark = ref({})
                                 <NTabPane name="borrow" tab="Mượn sách">
                                     <NSpace vertical>
                                         <!-- Thông tin đọc giả -->
-                                        <div v-if="selectedReaderInfo" class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                                            <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">Thông tin đọc giả</h4>
+                                        <NCard v-if="selectedReaderInfo" size="small" title="Thông tin đọc giả">
                                             <NSpace vertical size="small">
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Họ tên:</span> 
-                                                    <span class="ml-2">{{ selectedReaderInfo.HOLOT }} {{ selectedReaderInfo.TEN }}</span>
-                                                </div>
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Mã đọc giả:</span> 
-                                                    <span class="ml-2">{{ selectedReaderInfo.MADOCGIA }}</span>
-                                                </div>
+                                                <div><strong>Họ tên:</strong> {{ selectedReaderInfo.HOLOT }} {{ selectedReaderInfo.TEN }}</div>
+                                                <div><strong>Mã đọc giả:</strong> {{ selectedReaderInfo.MADOCGIA }}</div>
                                             </NSpace>
-                                        </div>
-                                        <NEmpty v-else description="Chưa chọn đọc giả" size="small" />
+                                        </NCard>
+                                        <NEmpty v-else description="Chưa chọn đọc giả" />
 
                                         <NDivider />
 
                                         <!-- Danh sách sách đã chọn -->
-                                        <div>
-                                            <h4 class="text-sm font-semibold mb-3">
-                                                Sách đã chọn 
-                                                <NTag v-if="selectedBooksInfo.length > 0" type="info" size="small" :bordered="false">
-                                                    {{ selectedBooksInfo.length }}
-                                                </NTag>
-                                            </h4>
+                                        <NCard size="small">
+                                            <template #header>
+                                                <NSpace align="center">
+                                                    <span>Sách đã chọn</span>
+                                                    <NTag v-if="selectedBooksInfo.length > 0" size="small">
+                                                        {{ selectedBooksInfo.length }}
+                                                    </NTag>
+                                                </NSpace>
+                                            </template>
                                             <NList v-if="selectedBooksInfo.length > 0" bordered>
                                                 <NListItem v-for="(book, index) in selectedBooksInfo" :key="book.key">
                                                     <NThing>
                                                         <template #header>
-                                                            <span class="text-sm font-medium">{{ index + 1 }}. {{ book.bookName }}</span>
+                                                            {{ index + 1 }}. {{ book.bookName }}
                                                         </template>
                                                         <template #description>
-                                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                            <NSpace size="small">
                                                                 <span>Tác giả: {{ book.author }}</span>
                                                                 <NDivider vertical />
                                                                 <span>Mã: {{ book.key }}</span>
-                                                            </div>
+                                                            </NSpace>
                                                         </template>
                                                     </NThing>
                                                 </NListItem>
                                             </NList>
-                                            <NEmpty v-else description="Chưa chọn sách" size="small" />
-                                        </div>
+                                            <NEmpty v-else description="Chưa chọn sách" />
+                                        </NCard>
                                     </NSpace>
                                 </NTabPane>
 
@@ -639,47 +637,44 @@ const customThemeDark = ref({})
                                 <NTabPane name="return" tab="Trả sách">
                                     <NSpace vertical>
                                         <!-- Thông tin đọc giả -->
-                                        <div v-if="selectedReturnReaderInfo" class="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
-                                            <h4 class="text-sm font-semibold text-green-600 dark:text-green-400 mb-2">Thông tin đọc giả</h4>
+                                        <NCard v-if="selectedReturnReaderInfo" size="small" title="Thông tin đọc giả">
                                             <NSpace vertical size="small">
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Họ tên:</span> 
-                                                    <span class="ml-2">{{ selectedReturnReaderInfo.HOLOT }} {{ selectedReturnReaderInfo.TEN }}</span>
-                                                </div>
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Mã đọc giả:</span> 
-                                                    <span class="ml-2">{{ selectedReturnReaderInfo.MADOCGIA }}</span>
-                                                </div>
+                                                <div><strong>Họ tên:</strong> {{ selectedReturnReaderInfo.HOLOT }} {{ selectedReturnReaderInfo.TEN }}</div>
+                                                <div><strong>Mã đọc giả:</strong> {{ selectedReturnReaderInfo.MADOCGIA }}</div>
                                             </NSpace>
-                                        </div>
-                                        <NEmpty v-else description="Chưa chọn đọc giả" size="small" />
+                                        </NCard>
+                                        <NEmpty v-else description="Chưa chọn đọc giả" />
 
                                         <NDivider />
 
                                         <!-- Danh sách sách trả -->
-                                        <div>
-                                            <h4 class="text-sm font-semibold mb-3">
-                                                Sách cần trả 
-                                                <NTag v-if="selectedReturnBooksInfo.length > 0" type="success" size="small" :bordered="false">
-                                                    {{ selectedReturnBooksInfo.length }}
-                                                </NTag>
-                                            </h4>
+                                        <NCard size="small">
+                                            <template #header>
+                                                <NSpace align="center">
+                                                    <span>Sách cần trả</span>
+                                                    <NTag v-if="selectedReturnBooksInfo.length > 0" size="small">
+                                                        {{ selectedReturnBooksInfo.length }}
+                                                    </NTag>
+                                                </NSpace>
+                                            </template>
                                             <NList v-if="selectedReturnBooksInfo.length > 0" bordered>
                                                 <NListItem v-for="(book, index) in selectedReturnBooksInfo" :key="book.maphieu">
                                                     <NThing>
                                                         <template #header>
                                                             <NSpace align="center">
-                                                                <span class="text-sm font-medium">{{ index + 1 }}. {{ book.label }}</span>
+                                                                <span>{{ index + 1 }}. {{ book.label }}</span>
                                                                 <NTag v-if="book.isOverdue" type="error" size="small">
                                                                     Trễ {{ book.soNgayTre }} ngày
                                                                 </NTag>
                                                             </NSpace>
                                                         </template>
                                                         <template #description>
-                                                            <NSpace vertical size="small" class="text-xs text-gray-500 dark:text-gray-400">
+                                                            <NSpace vertical size="small">
                                                                 <div>Mã phiếu: {{ book.maphieu }}</div>
-                                                                <div v-if="book.isOverdue" class="text-red-500">
-                                                                    Phí trễ: {{ book.phiTre.toLocaleString() }} đ
+                                                                <div v-if="book.isOverdue">
+                                                                    <NTag type="error" size="small">
+                                                                        Phí trễ: {{ book.phiTre.toLocaleString() }} đ
+                                                                    </NTag>
                                                                 </div>
                                                                 <NCheckbox 
                                                                     :checked="lostBooks?.includes(book.maphieu) || false"
@@ -695,19 +690,18 @@ const customThemeDark = ref({})
                                                                             }
                                                                         }
                                                                     }"
-                                                                    class="text-red-600"
                                                                 >
-                                                                    <span class="text-red-600 font-medium">
+                                                                    <NTag type="error" size="small">
                                                                         Sách bị mất (Phí: {{ (book.gia * 20).toLocaleString() }} đ)
-                                                                    </span>
+                                                                    </NTag>
                                                                 </NCheckbox>
                                                             </NSpace>
                                                         </template>
                                                     </NThing>
                                                 </NListItem>
                                             </NList>
-                                            <NEmpty v-else description="Chưa chọn sách" size="small" />
-                                        </div>
+                                            <NEmpty v-else description="Chưa chọn sách" />
+                                        </NCard>
                                     </NSpace>
                                 </NTabPane>
 
@@ -715,73 +709,63 @@ const customThemeDark = ref({})
                                 <NTabPane name="pickup" tab="Lấy sách">
                                     <NSpace vertical>
                                         <!-- Thông tin bill và đọc giả -->
-                                        <div v-if="selectedPickupBillInfo" class="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                                            <h4 class="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2">Thông tin Bill</h4>
+                                        <NCard v-if="selectedPickupBillInfo" size="small" title="Thông tin Bill">
                                             <NSpace vertical size="small">
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Mã Bill:</span> 
-                                                    <span class="ml-2">{{ selectedPickupBillInfo.MABILL }}</span>
-                                                </div>
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Đọc giả:</span> 
-                                                    <span class="ml-2">{{ selectedPickupBillInfo.DOCGIA?.HOLOT }} {{ selectedPickupBillInfo.DOCGIA?.TEN }}</span>
-                                                </div>
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Tổng tiền:</span> 
-                                                    <span class="ml-2">{{ selectedPickupBillInfo.TONGTIEN?.toLocaleString() }} đ</span>
-                                                </div>
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Phương thức:</span> 
+                                                <div><strong>Mã Bill:</strong> {{ selectedPickupBillInfo.MABILL }}</div>
+                                                <div><strong>Đọc giả:</strong> {{ selectedPickupBillInfo.DOCGIA?.HOLOT }} {{ selectedPickupBillInfo.DOCGIA?.TEN }}</div>
+                                                <div><strong>Tổng tiền:</strong> {{ selectedPickupBillInfo.TONGTIEN?.toLocaleString() }} đ</div>
+                                                <div>
+                                                    <strong>Phương thức:</strong> 
                                                     <NTag 
                                                         :type="selectedPickupBillInfo.LOAITHANHTOAN === 'cash' ? 'warning' : 'success'" 
                                                         size="small"
-                                                        class="ml-2"
                                                     >
                                                         {{ selectedPickupBillInfo.LOAITHANHTOAN === 'cash' ? 'Tiền mặt' : 'Online' }}
                                                     </NTag>
                                                 </div>
-                                                <div class="text-sm">
-                                                    <span class="font-medium">Trạng thái TT:</span> 
+                                                <div>
+                                                    <strong>Trạng thái TT:</strong> 
                                                     <NTag 
                                                         :type="selectedPickupBillInfo.TRANGTHAI ? 'success' : 'error'" 
                                                         size="small"
-                                                        class="ml-2"
                                                     >
                                                         {{ selectedPickupBillInfo.TRANGTHAI ? 'Đã thanh toán' : 'Chưa thanh toán' }}
                                                     </NTag>
                                                 </div>
                                             </NSpace>
-                                        </div>
-                                        <NEmpty v-else description="Chưa chọn bill" size="small" />
+                                        </NCard>
+                                        <NEmpty v-else description="Chưa chọn bill" />
 
                                         <NDivider />
 
                                         <!-- Danh sách TẤT CẢ sách chờ lấy -->
-                                        <div>
-                                            <h4 class="text-sm font-semibold mb-3">
-                                                Tất cả sách chờ lấy 
-                                                <NTag v-if="selectedPickupBillInfo?.PHIEUWAITING?.length > 0" type="warning" size="small" :bordered="false">
-                                                    {{ selectedPickupBillInfo.PHIEUWAITING.length }}
-                                                </NTag>
-                                            </h4>
+                                        <NCard size="small">
+                                            <template #header>
+                                                <NSpace align="center">
+                                                    <span>Tất cả sách chờ lấy</span>
+                                                    <NTag v-if="selectedPickupBillInfo?.PHIEUWAITING?.length > 0" size="small">
+                                                        {{ selectedPickupBillInfo.PHIEUWAITING.length }}
+                                                    </NTag>
+                                                </NSpace>
+                                            </template>
                                             <NList v-if="selectedPickupBillInfo?.PHIEUWAITING?.length > 0" bordered>
                                                 <NListItem v-for="(phieu, index) in selectedPickupBillInfo.PHIEUWAITING" :key="phieu.MAPHIEU">
                                                     <NThing>
                                                         <template #header>
-                                                            <span class="text-sm font-medium">{{ index + 1 }}. {{ phieu.SACH?.TENSACH }}</span>
+                                                            {{ index + 1 }}. {{ phieu.SACH?.TENSACH }}
                                                         </template>
                                                         <template #description>
-                                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                            <NSpace size="small">
                                                                 <span>Tác giả: {{ phieu.SACH?.TACGIA }}</span>
                                                                 <NDivider vertical />
                                                                 <span>Mã bản sao: {{ phieu.MA_BANSAO }}</span>
-                                                            </div>
+                                                            </NSpace>
                                                         </template>
                                                     </NThing>
                                                 </NListItem>
                                             </NList>
-                                            <NEmpty v-else description="Không có sách chờ lấy" size="small" />
-                                        </div>
+                                            <NEmpty v-else description="Không có sách chờ lấy" />
+                                        </NCard>
                                     </NSpace>
                                 </NTabPane>
                             </NTabs>
