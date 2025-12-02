@@ -37,7 +37,7 @@ const dialog = useDialog();
 const loading = ref(false);
 const isMaster = ref(false);
 const masterKey = ref('');
-const showMasterKeyInput = ref(false);
+const showMasterModal = ref(false);
 const statistics = ref({
     totalStaff: 0,
     totalAdmins: 0,
@@ -60,8 +60,15 @@ const formData = ref({
     HoTenNV: '',
     soDienThoai: '',
     DiaChi: '',
-    Password: ''
+    Password: '',
+    ChucVu: 'Librarian' // Mặc định là Thủ thư
 });
+
+// Chức vụ options (chỉ hiển khi có quyền Master)
+const staffRoleOptions = [
+    { label: 'Thủ thư', value: 'Librarian' },
+    { label: 'Admin', value: 'Admin' }
+];
 
 // Filter data
 const filterData = reactive({
@@ -150,8 +157,8 @@ const applyMasterKey = async () => {
     ]);
     
     if (isMaster.value) {
-        message.success('Đã kích hoạt quyền Master! Bạn có toàn quyền quản lý.');
-        showMasterKeyInput.value = false;
+        message.success('Đã kích hoạt thành công');
+        showMasterModal.value = false;
     } else {
         message.error('Master Key không hợp lệ!');
         masterKey.value = '';
@@ -167,6 +174,11 @@ const clearMasterKey = async () => {
         loadStatistics(),
         loadStaff()
     ]);
+};
+
+// Open master modal
+const openMasterModal = () => {
+    showMasterModal.value = true;
 };
 
 // Filter staff
@@ -213,7 +225,8 @@ const handleCreateStaff = () => {
         HoTenNV: '',
         soDienThoai: '',
         DiaChi: '',
-        Password: ''
+        Password: '',
+        ChucVu: 'Librarian' // Mặc định là Thủ thư
     };
     showModal.value = true;
 };
@@ -226,7 +239,8 @@ const handleEditStaff = (staff) => {
         HoTenNV: staff.HoTenNV,
         soDienThoai: staff.soDienThoai,
         DiaChi: staff.DiaChi || '',
-        Password: ''
+        Password: '',
+        ChucVu: staff.ChucVu || 'Librarian'
     };
     showModal.value = true;
 };
@@ -568,64 +582,32 @@ const staffPerformanceChartOptions = computed(() => {
             </NGi>
         </NGrid>
 
-        <!-- Master Key Section -->
-        <NSpace vertical class="p-8 shadow-md rounded-md bg-gradient-to-r from-slate-600 to-slate-700 text-white">
+        <!-- Master Mode Status -->
+        <NSpace 
+            v-if="isMaster" 
+            vertical 
+            class="p-6 shadow-md rounded-md bg-gradient-to-r from-amber-500 to-orange-600 text-white"
+        >
             <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-bold flex items-center gap-2">
-                        <NIcon size="28">
-                            <i class="fa-solid fa-key"></i>
-                        </NIcon>
-                        Chế độ Master
-                    </h2>
+                <div class="flex items-center gap-3">
+                    <NIcon size="32">
+                        <i class="fa-solid fa-crown"></i>
+                    </NIcon>
+                    <div>
+                        <h3 class="text-xl font-bold">Chế độ Master đang kích hoạt</h3>
+                        <p class="text-sm opacity-90">Bạn có toàn quyền quản lý tất cả nhân viên</p>
+                    </div>
                 </div>
-                <NSpace>
-                    <NButton 
-                        v-if="!isMaster"
-                        type="warning" 
-                        size="large"
-                        @click="showMasterKeyInput = !showMasterKeyInput"
-                    >
-                        <template #icon>
-                            <NIcon><i class="fa-solid fa-unlock"></i></NIcon>
-                        </template>
-                        {{ showMasterKeyInput ? 'Ẩn' : 'Kích hoạt Master' }}
-                    </NButton>
-                    <NButton 
-                        v-if="isMaster"
-                        type="error" 
-                        size="large"
-                        @click="clearMasterKey"
-                    >
-                        <template #icon>
-                            <NIcon><i class="fa-solid fa-lock"></i></NIcon>
-                        </template>
-                        Thoát Master
-                    </NButton>
-                </NSpace>
-            </div>
-            
-            <div v-if="showMasterKeyInput && !isMaster" class="mt-4">
-                <NSpace>
-                    <NInput
-                        v-model:value="masterKey"
-                        type="password"
-                        show-password-on="click"
-                        placeholder="Nhập Master Key..."
-                        style="width: 400px;"
-                        @keyup.enter="applyMasterKey"
-                    >
-                        <template #prefix>
-                            <NIcon><i class="fa-solid fa-key"></i></NIcon>
-                        </template>
-                    </NInput>
-                    <NButton type="success" @click="applyMasterKey">
-                        <template #icon>
-                            <NIcon><i class="fa-solid fa-check"></i></NIcon>
-                        </template>
-                        Xác nhận
-                    </NButton>
-                </NSpace>
+                <NButton 
+                    type="error" 
+                    size="large"
+                    @click="clearMasterKey"
+                >
+                    <template #icon>
+                        <NIcon><i class="fa-solid fa-right-from-bracket"></i></NIcon>
+                    </template>
+                    Thoát Master
+                </NButton>
             </div>
         </NSpace>
 
@@ -635,12 +617,24 @@ const staffPerformanceChartOptions = computed(() => {
                 <h1 class="text-3xl uppercase font-semibold">
                     Danh sách {{ isMaster ? 'tất cả nhân viên' : 'thủ thư' }}
                 </h1>
-                <NButton type="success" @click="handleCreateStaff">
-                    <template #icon>
-                        <NIcon><i class="fa-solid fa-plus"></i></NIcon>
-                    </template>
-                    Thêm nhân viên
-                </NButton>
+                <NSpace>
+                    <NButton 
+                        v-if="!isMaster"
+                        type="warning" 
+                        @click="openMasterModal"
+                    >
+                        <template #icon>
+                            <NIcon><i class="fa-solid fa-key"></i></NIcon>
+                        </template>
+                        Quyền Master
+                    </NButton>
+                    <NButton type="success" @click="handleCreateStaff">
+                        <template #icon>
+                            <NIcon><i class="fa-solid fa-plus"></i></NIcon>
+                        </template>
+                        Thêm nhân viên
+                    </NButton>
+                </NSpace>
             </div>
             
             <!-- Filter Controls -->
@@ -650,7 +644,7 @@ const staffPerformanceChartOptions = computed(() => {
                         <NInput 
                             v-model:value="filterData.query" 
                             clearable
-                            class="w-full" 
+                            class="min-w-md" 
                             placeholder="Tìm kiếm theo tên, SĐT, MSNV..."
                         >
                             <template #prefix>
@@ -711,6 +705,19 @@ const staffPerformanceChartOptions = computed(() => {
                     />
                 </NFormItem>
 
+                <NFormItem 
+                    v-if="isMaster && modalMode === 'create'"
+                    label="Chức vụ" 
+                    path="ChucVu" 
+                    required
+                >
+                    <NSelect
+                        v-model:value="formData.ChucVu"
+                        :options="staffRoleOptions"
+                        placeholder="Chọn chức vụ"
+                    />
+                </NFormItem>
+
                 <NFormItem label="Số điện thoại" path="soDienThoai" required>
                     <NInput
                         v-model:value="formData.soDienThoai"
@@ -752,6 +759,58 @@ const staffPerformanceChartOptions = computed(() => {
                         :disabled="submitting"
                     >
                         {{ modalMode === 'create' ? 'Thêm' : 'Cập nhật' }}
+                    </NButton>
+                </NSpace>
+            </template>
+        </NModal>
+
+        <!-- Master Key Modal -->
+        <NModal
+            v-model:show="showMasterModal"
+            preset="card"
+            title="Kích hoạt quyền Master"
+            :style="{ width: '500px' }"
+            :bordered="false"
+            :segmented="{
+                content: true,
+                footer: true
+            }"
+        >
+            <NSpace vertical size="large">
+                <div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                    <NIcon size="24" color="#f59e0b">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </NIcon>
+                    <p>Cung cấp Master key để xác thực quyền</p>
+                </div>
+
+                <NFormItem label="Master Key" required>
+                    <NInput
+                        v-model:value="masterKey"
+                        type="password"
+                        show-password-on="click"
+                        placeholder="Nhập Master Key..."
+                        @keyup.enter="applyMasterKey"
+                        size="large"
+                    >
+                        <template #prefix>
+                            <NIcon><i class="fa-solid fa-key"></i></NIcon>
+                        </template>
+                    </NInput>
+                </NFormItem>
+            </NSpace>
+
+            <template #footer>
+                <NSpace justify="end">
+                    <NButton @click="showMasterModal = false">Hủy</NButton>
+                    <NButton 
+                        type="warning" 
+                        @click="applyMasterKey"
+                    >
+                        <template #icon>
+                            <NIcon><i class="fa-solid fa-unlock"></i></NIcon>
+                        </template>
+                        Kích hoạt
                     </NButton>
                 </NSpace>
             </template>

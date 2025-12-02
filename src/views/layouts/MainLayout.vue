@@ -10,6 +10,8 @@ import {
     NLayoutFooter,
     NLayoutSider,
     NMenu,
+    NDropdown,
+    NAvatar,
     useMessage,
     useNotification
 }                           from    'naive-ui';
@@ -183,6 +185,21 @@ const menuOptions           =       [
                     RouterLink,
                     {
                         to: {
+                            name: 'publishers-list',
+                        }
+                    },
+                    {
+                        default: () => 'Tất cả'
+                    }
+                ),
+                key:   'publishers-list',
+                icon:  () => icon('fa-solid fa-list'),
+            },
+            {
+                label: () => h(
+                    RouterLink,
+                    {
+                        to: {
                             name: 'add-new-nxb',
                         }
                     },
@@ -275,10 +292,41 @@ const menuOptions           =       [
             </NSpace> 
             <Search />
             <NSpace align="center" size="large">
-                <span class="flex space-x-1 border-r border-r-gray-300 pr-4">
-                    <h3>Quản trị viên</h3>
-                    <h3 class="text-orange-600 italic">{{ currentAccount?.HoTenNV}}</h3>
-                </span>
+                <NDropdown
+                    trigger="click"
+                    :options="[
+                        {
+                            label: 'Thông tin cá nhân',
+                            key: 'profile',
+                            icon: () => h(NIcon, null, { default: () => h('i', { class: 'fa-solid fa-user' }) })
+                        },
+                        {
+                            label: 'Đăng xuất',
+                            key: 'logout',
+                            icon: () => h(NIcon, null, { default: () => h('i', { class: 'fa-solid fa-right-from-bracket' }) })
+                        }
+                    ]"
+                    @select="(key) => {
+                        if (key === 'profile') {
+                            router.push({ name: 'admin-profile' });
+                        } else if (key === 'logout') {
+                            removeAccount();
+                            localStorage.removeItem('adminToken');
+                            message.success('Đăng xuất thành công');
+                            router.push({ name: 'login' });
+                        }
+                    }"
+                >
+                    <div class="flex items-center space-x-3 cursor-pointer hover:opacity-80 border-r border-r-gray-300 pr-4">
+                        <NAvatar round size="small" style="background-color: #f97316;">
+                            {{ currentAccount?.HoTenNV?.charAt(0)?.toUpperCase() }}
+                        </NAvatar>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Quản trị viên</span>
+                            <span class="text-sm font-semibold text-orange-600">{{ currentAccount?.HoTenNV }}</span>
+                        </div>
+                    </div>
+                </NDropdown>
                 <NSwitch v-model:value="isDark">
                     <template #icon>
                         <NIcon v-if="isDark">
@@ -289,18 +337,6 @@ const menuOptions           =       [
                         </NIcon>
                     </template>
                 </NSwitch>
-                <NButton @click="() => {
-                    removeAccount();
-                    message.success('Đăng xuất thành công');
-                    router.push({ name: 'login' });
-                }">
-                    <template #icon>
-                        <NIcon>
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                        </NIcon>
-                    </template>
-                    Logout
-                </NButton>
             </NSpace>
         </NSpace>
     </NLayoutHeader>

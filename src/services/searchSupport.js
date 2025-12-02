@@ -13,6 +13,8 @@ const features = [
     new Features('Thêm Nhà xuất bản', '/admin/nxb/add'),
     new Features('Tất cả gói đăng ký', '/admin/packages'),
     new Features('Thêm gói đăng ký', '/admin/packages/add'),
+    new Features('Quản lý người dùng', '/admin/users'),
+    new Features('Quản lý nhân viên', '/admin/staff'),
 ]
 
 console.log(features);

@@ -50,10 +50,20 @@ const subscribePackage = async (MADOCGIA, MaGoi) => {
     }
 };
 
+const activatePackage = async (id) => {
+    try {
+        const response = await axios.put(`${BASE_API}/package/activate/${id}`);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export {
     getAllPackages,
     createPackage,
     updatePackage,
     subscribePackage,
-    deletePackage
+    deletePackage,
+    activatePackage
 };

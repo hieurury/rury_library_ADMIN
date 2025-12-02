@@ -38,6 +38,7 @@ const selectedLocation = ref({
 });
 const DiaChiCuThe = ref('');
 const formRef = ref(null);
+const submittingForm = ref(false);
 const form = ref({
     TenNXB: '',
     DiaChi: '',
@@ -128,6 +129,8 @@ watch([selectedLocation, DiaChiCuThe], () => {
 //submit form
 const submit = (e) => {
     e.preventDefault();
+    if (submittingForm.value) return; // Ngăn double click
+    
     formRef.value.validate( async (errors) => {
         if (!errors) {
             // Validate địa chỉ cụ thể
@@ -137,22 +140,29 @@ const submit = (e) => {
                 return;
             }
 
-            const response = await axios.post(`${BASE_API}/nha-xuat-ban/admin/create`, form.value);
-            message[response.data.status](response.data.message);
-            
-            if(response.data.status === 'success') {
-                // Reset form
-                form.value.TenNXB = '';
-                selectedLocation.value = {
-                    province: null,
-                    district: null,
-                    ward: null
-                };
-                DiaChiCuThe.value = '';
-                formRef.value.restoreValidation();
+            try {
+                submittingForm.value = true;
+                const response = await axios.post(`${BASE_API}/nha-xuat-ban/admin/create`, form.value);
+                message[response.data.status](response.data.message);
                 
-                // Lấy lại danh sách NXB
-                await getAllNxb();
+                if(response.data.status === 'success') {
+                    // Reset form
+                    form.value.TenNXB = '';
+                    selectedLocation.value = {
+                        province: null,
+                        district: null,
+                        ward: null
+                    };
+                    DiaChiCuThe.value = '';
+                    formRef.value.restoreValidation();
+                    
+                    // Lấy lại danh sách NXB
+                    await getAllNxb();
+                }
+            } catch (error) {
+                message.error(error.response?.data?.message || 'Lỗi khi thêm nhà xuất bản');
+            } finally {
+                submittingForm.value = false;
             }
         } else {
             message.error('Vui lòng kiểm tra lại thông tin!');
@@ -182,7 +192,7 @@ const submit = (e) => {
                                 <NInput v-model:value="DiaChiCuThe" placeholder="Số nhà, tên đường..." />
                             </NFormItem>
                             <NFormItem>
-                                <NButton @click="submit" type="primary">Thêm nhà xuất bản</NButton>
+                                <NButton @click="submit" type="primary" :loading="submittingForm" :disabled="submittingForm">Thêm nhà xuất bản</NButton>
                             </NFormItem>
                         </NForm>
                     </NSpace>

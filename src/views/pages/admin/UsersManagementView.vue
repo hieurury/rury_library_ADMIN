@@ -19,6 +19,10 @@ import {
     NEmpty,
     NNumberAnimation,
     NSelect,
+    NDrawer,
+    NDrawerContent,
+    NDescriptions,
+    NDescriptionsItem,
     useMessage,
     useDialog
 } from 'naive-ui';
@@ -47,6 +51,8 @@ const lockFormData = ref({
     duration: 0,
     durationType: 'permanent' // 'permanent' | 'temporary'
 });
+const showUserDetail = ref(false);
+const selectedUser = ref(null);
 
 
 // Filter data
@@ -203,13 +209,29 @@ const handleUnlockUser = (user) => {
     });
 };
 
+// Handle view user detail
+const handleViewUserDetail = (user) => {
+    selectedUser.value = user;
+    showUserDetail.value = true;
+};
+
 // Table columns
 const columns = [
     {
         title: 'Mã ĐG',
         key: 'MADOCGIA',
         width: 100,
-        fixed: 'left'
+        fixed: 'left',
+        render: (row) => {
+            return h(
+                'span',
+                {
+                    class: 'cursor-pointer text-blue-600 hover:text-blue-800 hover:underline',
+                    onClick: () => handleViewUserDetail(row)
+                },
+                row.MADOCGIA
+            );
+        }
     },
     {
         title: 'Họ tên',
@@ -336,36 +358,117 @@ const pagination = {
     pageSize: 10
 };
 
-// Chart data
-const userStatusChartOptions = computed(() => ({
-    series: [statistics.value.activeUsers, statistics.value.lockedUsers],
-    chart: {
-        type: 'donut',
-        height: 280
-    },
-    labels: ['Hoạt động', 'Bị khóa'],
-    colors: ['#18a058', '#d03050'],
-    legend: {
-        position: 'bottom'
-    },
-    dataLabels: {
-        enabled: true,
-        formatter: function (val, opts) {
-            return opts.w.config.series[opts.seriesIndex];
-        }
-    },
-    plotOptions: {
-        pie: {
-            donut: {
-                labels: {
-                    show: true,
-                    total: {
-                        show: true,
-                        label: 'Tổng',
-                        formatter: () => statistics.value.totalUsers
-                    }
+// Chart data - Biểu đồ cột tỷ lệ người dùng vi phạm
+const violationChartOptions = computed(() => {
+    const violationRate = statistics.value.totalUsers > 0 
+        ? ((statistics.value.usersWithViolations / statistics.value.totalUsers) * 100).toFixed(1)
+        : 0;
+    const normalRate = (100 - parseFloat(violationRate)).toFixed(1);
+    
+    return {
+        series: [{
+            name: 'Số lượng',
+            data: [
+                statistics.value.totalUsers - statistics.value.usersWithViolations,
+                statistics.value.usersWithViolations
+            ]
+        }],
+        chart: {
+            type: 'bar',
+            height: 300,
+            toolbar: {
+                show: false
+            }
+        },
+        plotOptions: {
+            bar: {
+                horizontal: false,
+                columnWidth: '50%',
+                dataLabels: {
+                    position: 'top'
                 }
             }
+        },
+        dataLabels: {
+            enabled: true,
+            formatter: function (val) {
+                return val;
+            },
+            offsetY: -20,
+            style: {
+                fontSize: '12px',
+                colors: ['#304758']
+            }
+        },
+        xaxis: {
+            categories: ['Không vi phạm', 'Có vi phạm'],
+            labels: {
+                style: {
+                    fontSize: '12px'
+                }
+            }
+        },
+        yaxis: {
+            title: {
+                text: 'Số lượng người dùng'
+            }
+        },
+        colors: ['#18a058', '#f0a020'],
+        legend: {
+            show: false
+        },
+        title: {
+            text: `Tỷ lệ vi phạm: ${violationRate}%`,
+            align: 'center',
+            style: {
+                fontSize: '14px',
+                fontWeight: 600
+            }
+        }
+    };
+});
+
+// Biểu đồ radar trạng thái người dùng
+const userRadarChartOptions = computed(() => ({
+    series: [{
+        name: 'Số lượng',
+        data: [
+            statistics.value.activeUsers,
+            statistics.value.lockedUsers,
+            statistics.value.usersWithViolations,
+            statistics.value.newUsers,
+            statistics.value.totalUsers - statistics.value.newUsers
+        ]
+    }],
+    chart: {
+        type: 'radar',
+        height: 300,
+        toolbar: {
+            show: false
+        }
+    },
+    xaxis: {
+        categories: ['Hoạt động', 'Bị khóa', 'Vi phạm', 'Mới', 'Cũ']
+    },
+    colors: ['#18a058'],
+    stroke: {
+        width: 2
+    },
+    fill: {
+        opacity: 0.2
+    },
+    markers: {
+        size: 4
+    },
+    yaxis: {
+        stepSize: Math.ceil(statistics.value.totalUsers / 5)
+    },
+    title: {
+        text: 'Phân tích trạng thái người dùng',
+        align: 'center',
+        style: {
+            fontSize: '14px',
+            fontWeight: 600
         }
     }
 }));
@@ -376,7 +479,7 @@ const userStatusChartOptions = computed(() => ({
         <!-- Header with statistics -->
         <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
             <h1 class="text-3xl uppercase font-semibold">Quản lý người dùng</h1>
-            <NGrid :cols="5" x-gap="12" y-gap="12" class="my-4">
+            <NGrid :cols="3" x-gap="12" y-gap="12" class="my-4">
                 <NGi :span="1">
                     <NStatistic
                         label="Tổng người dùng"
@@ -397,23 +500,6 @@ const userStatusChartOptions = computed(() => ({
                 </NGi>
                 <NGi :span="1">
                     <NStatistic
-                        label="Đang hoạt động"
-                        class="relative w-full ring-2 ring-green-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-600/50 dark:to-green-700/50 shadow-md text-white rounded-md p-4"
-                    >
-                        <NNumberAnimation 
-                            :from="0" 
-                            :to="statistics.activeUsers" 
-                            :active="true"
-                        />
-                        <template #prefix>
-                            <NIcon size="28" class="mr-2">
-                                <i class="fa-solid fa-user-check"></i>
-                            </NIcon>
-                        </template>
-                    </NStatistic>
-                </NGi>
-                <NGi :span="1">
-                    <NStatistic
                         label="Bị khóa"
                         class="relative w-full ring-2 ring-red-500 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-600/50 dark:to-red-700/50 shadow-md text-white rounded-md p-4"
                     >
@@ -425,23 +511,6 @@ const userStatusChartOptions = computed(() => ({
                         <template #prefix>
                             <NIcon size="28" class="mr-2">
                                 <i class="fa-solid fa-user-lock"></i>
-                            </NIcon>
-                        </template>
-                    </NStatistic>
-                </NGi>
-                <NGi :span="1">
-                    <NStatistic
-                        label="Mới (30 ngày)"
-                        class="relative w-full ring-2 ring-yellow-500 bg-gradient-to-r from-yellow-600 to-yellow-700 dark:from-yellow-600/50 dark:to-yellow-700/50 shadow-md text-white rounded-md p-4"
-                    >
-                        <NNumberAnimation 
-                            :from="0" 
-                            :to="statistics.newUsers" 
-                            :active="true"
-                        />
-                        <template #prefix>
-                            <NIcon size="28" class="mr-2">
-                                <i class="fa-solid fa-user-plus"></i>
                             </NIcon>
                         </template>
                     </NStatistic>
@@ -469,13 +538,17 @@ const userStatusChartOptions = computed(() => ({
         <!-- User Chart Section -->
         <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
             <h1 class="text-2xl uppercase font-semibold">Biểu đồ trạng thái</h1>
-            <div class="my-4">
-                <Chart
-                    v-if="statistics.totalUsers > 0"
-                    :options="userStatusChartOptions"
-                />
-                <NEmpty v-else description="Chưa có dữ liệu" />
+            <div v-if="statistics.totalUsers > 0">
+                <NGrid :cols="2" x-gap="24" y-gap="12" class="my-4">
+                    <NGi :span="1">
+                        <Chart :options="violationChartOptions" />
+                    </NGi>
+                    <NGi :span="1">
+                        <Chart :options="userRadarChartOptions" />
+                    </NGi>
+                </NGrid>
             </div>
+            <NEmpty v-else description="Chưa có dữ liệu" class="my-4" />
         </NSpace>
 
         <!-- Users List Section -->
@@ -489,7 +562,7 @@ const userStatusChartOptions = computed(() => ({
                         <NInput 
                             v-model:value="filterData.query" 
                             clearable
-                            class="w-full" 
+                            class="min-w-md" 
                             placeholder="Tìm kiếm theo tên, email, SĐT, mã ĐG..."
                         >
                             <template #prefix>
@@ -590,6 +663,179 @@ const userStatusChartOptions = computed(() => ({
                 </NSpace>
             </template>
         </NModal>
+
+        <!-- User Detail Drawer -->
+        <NDrawer
+            v-model:show="showUserDetail"
+            :width="500"
+            placement="right"
+        >
+            <NDrawerContent 
+                v-if="selectedUser"
+                title="Thông tin chi tiết người dùng"
+                closable
+            >
+                <NSpace vertical size="large">
+                    <!-- Thông tin cá nhân -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 flex items-center">
+                            <NIcon size="20" class="mr-2">
+                                <i class="fa-solid fa-user"></i>
+                            </NIcon>
+                            Thông tin cá nhân
+                        </h3>
+                        <NDescriptions :column="1" bordered size="small">
+                            <NDescriptionsItem label="Mã độc giả">
+                                {{ selectedUser.MADOCGIA }}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Họ tên">
+                                {{ selectedUser.HOLOT }} {{ selectedUser.TEN }}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Email">
+                                {{ selectedUser.EMAIL || "Chưa cập nhật"}}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Điện thoại">
+                                {{ selectedUser.DIENTHOAI || 'N/A' }}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Ngày sinh">
+                                {{ formatDate(selectedUser.NGAYSINH) }}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Địa chỉ">
+                                {{ selectedUser.DIACHI || 'N/A' }}
+                            </NDescriptionsItem>
+                        </NDescriptions>
+                    </div>
+
+                    <!-- Thông tin gói dịch vụ -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 flex items-center">
+                            <NIcon size="20" class="mr-2">
+                                <i class="fa-solid fa-box"></i>
+                            </NIcon>
+                            Gói dịch vụ
+                        </h3>
+                        <NDescriptions :column="1" bordered size="small">
+                            <NDescriptionsItem label="Gói hiện tại">
+                                <NTag type="info" size="small">
+                                    {{ selectedUser.GOI?.MaGoi || 'N/A' }}
+                                </NTag>
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Ngày đăng ký">
+                                {{ formatDate(selectedUser.GOI?.NgayDangKy) }}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem label="Ngày hết hạn">
+                                {{ formatDate(selectedUser.GOI?.NgayHetHan) }}
+                            </NDescriptionsItem>
+                        </NDescriptions>
+                    </div>
+
+                    <!-- Thông tin vi phạm -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 flex items-center">
+                            <NIcon size="20" class="mr-2">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </NIcon>
+                            Thông tin vi phạm
+                        </h3>
+                        <NDescriptions :column="1" bordered size="small">
+                            <NDescriptionsItem label="Số lần vi phạm">
+                                <NTag 
+                                    :type="(selectedUser.CACVIPHAM?.length || 0) > 0 ? 'warning' : 'success'"
+                                    size="small"
+                                >
+                                    {{ selectedUser.CACVIPHAM?.length || 0 }} lần
+                                </NTag>
+                            </NDescriptionsItem>
+                            <NDescriptionsItem 
+                                v-if="selectedUser.CACVIPHAM?.length > 0" 
+                                label="Chi tiết vi phạm"
+                            >
+                                <NSpace vertical size="small">
+                                    <div 
+                                        v-for="(vp, index) in selectedUser.CACVIPHAM" 
+                                        :key="index"
+                                        class="text-sm p-2 bg-orange-50 dark:bg-orange-900/20 rounded"
+                                    >
+                                        <div class="flex justify-between items-center">
+                                            <NTag 
+                                                :type="vp.LOAI === 'delay' ? 'warning' : 'error'" 
+                                                size="tiny"
+                                            >
+                                                {{ vp.LOAI === 'delay' ? 'Trả trễ' : 'Mất sách' }}
+                                            </NTag>
+                                            <span class="text-gray-500 dark:text-gray-400">
+                                                {{ formatDate(vp.NGAYVIPHAM) }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-1 text-orange-600 dark:text-orange-400 font-medium">
+                                            Tiền phạt: {{ vp.TIENPHAT?.toLocaleString('vi-VN') || 0 }}đ
+                                        </div>
+                                    </div>
+                                </NSpace>
+                            </NDescriptionsItem>
+                        </NDescriptions>
+                    </div>
+
+                    <!-- Trạng thái tài khoản -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 flex items-center">
+                            <NIcon size="20" class="mr-2">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </NIcon>
+                            Trạng thái tài khoản
+                        </h3>
+                        <NDescriptions :column="1" bordered size="small">
+                            <NDescriptionsItem label="Trạng thái">
+                                <NTag 
+                                    :type="selectedUser.TRANGTHAI ? 'success' : 'error'"
+                                    size="small"
+                                >
+                                    {{ selectedUser.TRANGTHAI ? 'Hoạt động' : 'Bị khóa' }}
+                                </NTag>
+                            </NDescriptionsItem>
+                            <NDescriptionsItem 
+                                v-if="!selectedUser.TRANGTHAI && selectedUser.LYDO_KHOA"
+                                label="Lý do khóa"
+                            >
+                                {{ selectedUser.LYDO_KHOA }}
+                            </NDescriptionsItem>
+                            <NDescriptionsItem 
+                                v-if="!selectedUser.TRANGTHAI && selectedUser.NGAYMOKHOA"
+                                label="Ngày mở khóa"
+                            >
+                                {{ formatDate(selectedUser.NGAYMOKHOA) }}
+                            </NDescriptionsItem>
+                        </NDescriptions>
+                    </div>
+                </NSpace>
+
+                <template #footer>
+                    <NSpace justify="end">
+                        <NButton @click="showUserDetail = false">Đóng</NButton>
+                        <NButton 
+                            v-if="selectedUser.TRANGTHAI"
+                            type="error"
+                            @click="() => { showUserDetail = false; handleLockUser(selectedUser); }"
+                        >
+                            <template #icon>
+                                <NIcon><i class="fa-solid fa-lock"></i></NIcon>
+                            </template>
+                            Khóa tài khoản
+                        </NButton>
+                        <NButton 
+                            v-else
+                            type="success"
+                            @click="() => { showUserDetail = false; handleUnlockUser(selectedUser); }"
+                        >
+                            <template #icon>
+                                <NIcon><i class="fa-solid fa-lock-open"></i></NIcon>
+                            </template>
+                            Mở khóa
+                        </NButton>
+                    </NSpace>
+                </template>
+            </NDrawerContent>
+        </NDrawer>
     </NSpace>
 </template>
 

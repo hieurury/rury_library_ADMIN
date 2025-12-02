@@ -144,6 +144,30 @@ const deleteCategory = async (maLoai) => {
 };
 //<========== Liên quan đến xóa danh mục
 
+//==========> Liên quan đến kích hoạt danh mục
+const activatingCategory = ref(null);
+
+const activateCategory = async (maLoai) => {
+    if (activatingCategory.value) return;
+    
+    try {
+        activatingCategory.value = maLoai;
+        const response = await axios.put(`${BASE_API}/the-loai/activate/${maLoai}`);
+        message[response.data.status](response.data.message);
+        await getCategories();
+    } catch (error) {
+        message.error(error.response?.data?.message || 'Kích hoạt danh mục thất bại');
+    } finally {
+        activatingCategory.value = null;
+    }
+};
+//<========== Liên quan đến kích hoạt danh mục
+
+//==========> Thống kê
+const totalCategories = computed(() => allCategories.value.filter(c => c.TINHTRANG !== false).length);
+const totalHiddenCategories = computed(() => allCategories.value.filter(c => c.TINHTRANG === false).length);
+//<========== Thống kê
+
 //==========> Liên quan đến sửa danh mục
 const editModalShow = ref(false);
 const editFormRef = ref(null);
@@ -274,12 +298,19 @@ const submitEditForm = async () => {
     <NSpace vertical class="p-4">
         <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
             <h1 class="text-3xl uppercase font-semibold">Quản lý danh mục</h1>
-            <NGrid :cols="4" x-gap="12" y-gap="12" class="my-4">
+            <NGrid :cols="5" x-gap="12" y-gap="12" class="my-4">
                 <NGi :span="1">
                     <NStatistic
                         label="Tổng số danh mục"
-                        :value="allCategories.length"
+                        :value="totalCategories"
                         class="w-full ring-2 ring-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-600/50 dark:to-blue-700/50 shadow-md text-white rounded-md p-4"
+                    />
+                </NGi>
+                <NGi :span="1">
+                    <NStatistic
+                        label="Danh mục bị ẩn"
+                        :value="totalHiddenCategories"
+                        class="w-full ring-2 ring-red-500 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-600/50 dark:to-red-700/50 shadow-md text-white rounded-md p-4"
                     />
                 </NGi>
                 <NGi :span="1">
@@ -322,9 +353,39 @@ const submitEditForm = async () => {
             <NList clickable hoverable show-divider="true">
                 <NGrid cols="3" x-gap="12" y-gap="12" class=" p-2">
                     <NGi span="1" v-for="category in categoryView" :key="category.MaLoai">
-                        <NListItem class="dark:bg-gray-600/20 bg-transparent shadow rounded-md p-2 h-full group">
+                        <NListItem 
+                            class="dark:bg-gray-600/20 bg-transparent shadow rounded-md p-2 h-full group relative"
+                            :class="{ 'ring-2 ring-red-500 opacity-70': category.TINHTRANG === false }"
+                        >
+                            <!-- Badge trạng thái -->
+                            <span 
+                                v-if="category.TINHTRANG === false" 
+                                class="absolute top-2 left-2 z-20"
+                            >
+                                <NTag type="error" size="small">
+                                    <i class="fa-solid fa-eye-slash mr-1"></i> Đã ẩn
+                                </NTag>
+                            </span>
+                            
                             <span class="absolute hidden group-hover:block top-0 right-2">
                                 <NSpace>
+                                    <!-- Nút kích hoạt lại (chỉ hiện khi danh mục bị ẩn) -->
+                                    <NPopconfirm
+                                        v-if="category.TINHTRANG === false"
+                                        @positive-click="activateCategory(category.MaLoai)"
+                                        @negative-click="() => message.info('Đã hủy')"
+                                        positive-text="Kích hoạt"
+                                        negative-text="Hủy"
+                                    >
+                                        <template #trigger>
+                                            <NIcon :class="{ 'opacity-50': activatingCategory === category.MaLoai }">
+                                                <i v-if="activatingCategory === category.MaLoai" class="fa-solid fa-spinner fa-spin text-green-500"></i>
+                                                <i v-else class="fa-solid fa-rotate-left text-green-500 hover:text-green-700 cursor-pointer"></i>
+                                            </NIcon>
+                                        </template>
+                                        Bạn có chắc muốn kích hoạt lại danh mục này?
+                                    </NPopconfirm>
+                                    
                                     <!-- pop confirm xóa -->
                                     <NPopconfirm
                                         @positive-click="deleteCategory(category.MaLoai)"
@@ -339,7 +400,10 @@ const submitEditForm = async () => {
                                             <i v-else class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
                                         </NIcon>
                                         </template>
-                                        Hành động này sẽ xoá danh mục ra khỏi hệ thống, bạn có chắc?
+                                        {{ category.TINHTRANG === false 
+                                            ? 'Danh mục này đã bị ẩn. Xóa để xóa vĩnh viễn khỏi hệ thống?'
+                                            : 'Hành động này sẽ ẩn danh mục. Nếu không còn ai mượn sách thuộc danh mục này, xóa lần nữa sẽ xóa vĩnh viễn.' 
+                                        }}
                                     </NPopconfirm>
                                     <!-- nút sửa -->
                                     <NIcon @click="openEditModal(category)">

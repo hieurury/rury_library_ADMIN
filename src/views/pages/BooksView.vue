@@ -56,7 +56,8 @@ const loading                   =       ref(true);
 
 //==========> Number animation
 const numberAnimation           =       ref(null);
-const totalBooks                =       computed(() => allBooks.value.length);
+const totalBooks                =       computed(() => allBooks.value.filter(b => b.TINHTRANG !== false).length);
+const totalHiddenBooks          =       computed(() => allBooks.value.filter(b => b.TINHTRANG === false).length);
 const totalBookTemplate         =       computed(() => allBooks.value.reduce((acc, book) => acc + book.SOQUYEN, 0));
 
 
@@ -101,11 +102,30 @@ const deleteBook                =       async (maSach) => {
         message[response.data.status](response.data.message);
         await getAllBooks();
     } catch (error) {
-        console.log(error);
+        message.error(error.response?.data?.message || 'Xóa sách thất bại');
     } finally {
         deletingBook.value      =       null;
     }
 };
+
+//==========> Kích hoạt lại sách
+const activatingBook            =       ref(null);
+
+const activateBook              =       async (maSach) => {
+    if (activatingBook.value) return;
+    
+    try {
+        activatingBook.value    =       maSach;
+        const response          =       await axios.put(`${BASE_API}/sach/admin/activate/${maSach}`);
+        message[response.data.status](response.data.message);
+        await getAllBooks();
+    } catch (error) {
+        message.error(error.response?.data?.message || 'Kích hoạt sách thất bại');
+    } finally {
+        activatingBook.value    =       null;
+    }
+};
+//<========== Kích hoạt lại sách
 
 //lọc sách theo từ khoá
 const filterBooksByQuery         =       (filter) => {
@@ -418,13 +438,21 @@ const customThemeDark = ref({
             <!-- header page statistic -->
             <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
                 <h1 class="text-3xl uppercase font-semibold">Quản lý sách</h1>
-                <NGrid :cols="4" x-gap="12" y-gap="12" class="my-4">
+                <NGrid :cols="5" x-gap="12" y-gap="12" class="my-4">
                     <NGi :span="1">
                         <NStatistic
                             label="Tổng số sách"
                             class="relative w-full ring-2 ring-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-600/50 dark:to-blue-700/50 shadow-md text-white rounded-md p-4"
                         >
-                            <NNumberAnimation ref="numberAnimation" :from="100" :to="totalBooks" :active="true"/>
+                            <NNumberAnimation ref="numberAnimation" :from="0" :to="totalBooks" :active="true"/>
+                        </NStatistic>
+                    </NGi>
+                    <NGi :span="1">
+                        <NStatistic
+                            label="Sách bị ẩn"
+                            class="relative w-full ring-2 ring-red-500 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-600/50 dark:to-red-700/50 shadow-md text-white rounded-md p-4"
+                        >
+                            <NNumberAnimation :from="0" :to="totalHiddenBooks" :active="true"/>
                         </NStatistic>
                     </NGi>
                     <NGi :span="1">
@@ -432,7 +460,7 @@ const customThemeDark = ref({
                             label="Tổng số bản sao"
                             class="relative w-full ring-2 ring-green-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-600/50 dark:to-green-700/50 shadow-md rounded-md p-4"
                         >
-                            <NNumberAnimation ref="numberAnimation" :from="100" :to="totalBookTemplate" :active="true"/>
+                            <NNumberAnimation ref="numberAnimation" :from="0" :to="totalBookTemplate" :active="true"/>
                         </NStatistic>
                     </NGi>
                     <NGi :span="2">
@@ -489,9 +517,39 @@ const customThemeDark = ref({
                 <NList clickable hoverable show-divider="true">
                     <NGrid cols="3" x-gap="12" y-gap="12" class=" p-2">
                         <NGi v-if="currentBooks && currentBooks.length > 0" span="1" v-for="book in booksView" :key="book.MaSach">
-                            <NListItem class="dark:bg-gray-600/20 h-full group bg-transparent shadow rounded-md p-2">
+                            <NListItem 
+                                class="dark:bg-gray-600/20 h-full group bg-transparent shadow rounded-md p-2 relative"
+                                :class="{ 'ring-2 ring-red-500 opacity-70': book.TINHTRANG === false }"
+                            >
+                                <!-- Badge trạng thái -->
+                                <span 
+                                    v-if="book.TINHTRANG === false" 
+                                    class="absolute top-2 left-2 z-20"
+                                >
+                                    <NTag type="error" size="small">
+                                        <i class="fa-solid fa-eye-slash mr-1"></i> Đã ẩn
+                                    </NTag>
+                                </span>
+                                
                                 <span class="absolute hidden group-hover:block top-0 right-2">
                                     <NSpace>
+                                        <!-- Nút kích hoạt lại (chỉ hiện khi sách bị ẩn) -->
+                                        <NPopconfirm
+                                            v-if="book.TINHTRANG === false"
+                                            @positive-click="activateBook(book.MASACH)"
+                                            @negative-click="() => message.info('Đã hủy')"
+                                            positive-text="Kích hoạt"
+                                            negative-text="Hủy"
+                                        >
+                                            <template #trigger>
+                                                <NIcon :class="{ 'opacity-50': activatingBook === book.MASACH }">
+                                                    <i v-if="activatingBook === book.MASACH" class="fa-solid fa-spinner fa-spin text-green-500"></i>
+                                                    <i v-else class="fa-solid fa-rotate-left text-green-500 hover:text-green-700 cursor-pointer"></i>
+                                                </NIcon>
+                                            </template>
+                                            Bạn có chắc muốn kích hoạt lại sách này?
+                                        </NPopconfirm>
+                                        
                                         <!-- pop confirm -->
                                         <NPopconfirm
                                             @positive-click="deleteBook(book.MASACH)"
@@ -506,7 +564,10 @@ const customThemeDark = ref({
                                                 <i v-else class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
                                             </NIcon>
                                             </template>
-                                            Hành động này sẽ xoá đầu sách và toàn bộ bản sao ra khỏi hệ thống, bạn có chắc?
+                                            {{ book.TINHTRANG === false 
+                                                ? 'Sách này đã bị ẩn. Xóa để xóa vĩnh viễn khỏi hệ thống?'
+                                                : 'Hành động này sẽ ẩn sách. Nếu không còn ai mượn, xóa lần nữa sẽ xóa vĩnh viễn.' 
+                                            }}
                                         </NPopconfirm>
                                         <!--  -->
                                         <NIcon @click="openEditModal(book)">

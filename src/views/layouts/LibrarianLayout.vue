@@ -10,6 +10,8 @@ import {
     NSwitch,
     NIcon,
     NMenu,
+    NDropdown,
+    NAvatar,
     useNotification,
     useMessage
 }                           from    'naive-ui';
@@ -97,10 +99,41 @@ const menuOptions           =       [
                     <h1 class="text-xl uppercase font-semibold">Quản lý thư viện</h1>
                 </NSpace> 
                 <NSpace align="center" size="large">
-                    <span class="flex space-x-1 border-r border-r-gray-300 pr-4">
-                        <h3>Thủ thư thư viện</h3>
-                        <h3 class="text-orange-600 italic">{{ currentAccount?.HoTenNV}}</h3>
-                    </span>
+                    <NDropdown
+                        trigger="click"
+                        :options="[
+                            {
+                                label: 'Thông tin cá nhân',
+                                key: 'profile',
+                                icon: () => h(NIcon, null, { default: () => h('i', { class: 'fa-solid fa-user' }) })
+                            },
+                            {
+                                label: 'Đăng xuất',
+                                key: 'logout',
+                                icon: () => h(NIcon, null, { default: () => h('i', { class: 'fa-solid fa-right-from-bracket' }) })
+                            }
+                        ]"
+                        @select="(key) => {
+                            if (key === 'profile') {
+                                router.push({ name: 'librarian-profile' });
+                            } else if (key === 'logout') {
+                                removeAccount();
+                                localStorage.removeItem('adminToken');
+                                message.success('Đăng xuất thành công');
+                                router.push({ name: 'login' });
+                            }
+                        }"
+                    >
+                        <div class="flex items-center space-x-3 cursor-pointer hover:opacity-80 border-r border-r-gray-300 pr-4">
+                            <NAvatar round size="small" style="background-color: #0ea5e9;">
+                                {{ currentAccount?.HoTenNV?.charAt(0)?.toUpperCase() }}
+                            </NAvatar>
+                            <div class="flex flex-col">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Thủ thư thư viện</span>
+                                <span class="text-sm font-semibold text-sky-600">{{ currentAccount?.HoTenNV }}</span>
+                            </div>
+                        </div>
+                    </NDropdown>
                     <NSwitch v-model:value="isDark">
                         <template #icon>
                             <NIcon v-if="isDark">
@@ -111,18 +144,6 @@ const menuOptions           =       [
                             </NIcon>
                         </template>
                     </NSwitch>
-                    <NButton @click="() => {
-                        removeAccount();
-                        message.success('Đăng xuất thành công');
-                        router.push({ name: 'login' });
-                    }">
-                        <template #icon>
-                            <NIcon>
-                                <i class="fa-solid fa-right-from-bracket"></i>
-                            </NIcon>
-                        </template>
-                        Logout
-                    </NButton>
                 </NSpace>
             </NSpace>
         </n-layout-header>

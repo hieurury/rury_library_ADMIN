@@ -13,6 +13,7 @@ import HomeView             from "../views/pages/admin/HomeView.vue";
 import BooksView            from "../views/pages/BooksView.vue";
 import AddNewBookView       from "../views/pages/admin/AddNewBookView.vue";
 import AddNewNXBView        from "../views/pages/admin/AddNewNXBView.vue";
+import PublishersView       from "../views/pages/PublishersView.vue";
 import AddNewPackageView       from "../views/pages/admin/AddNewPackageView.vue";
 import UsersManagementView  from "../views/pages/admin/UsersManagementView.vue";
 import StaffManagementView  from "../views/pages/admin/StaffManagementView.vue";
@@ -88,6 +89,12 @@ const routes = [
                 name: 'admin-nxb',
                 children: [
                     {
+                        path: '',
+                        name: 'publishers-list',
+                        component: PublishersView,
+                        meta: { requiresAuth: true, roles: ['Admin'], title: 'Publishers' }
+                    },
+                    {
                         path: 'add',
                         name: 'add-new-nxb',
                         component: AddNewNXBView,
@@ -124,6 +131,12 @@ const routes = [
                 name: 'admin-staff',
                 component: StaffManagementView,
                 meta: { requiresAuth: true, roles: ['Admin'], title: 'Staff Management' }
+            },
+            {
+                path: 'profile',
+                name: 'admin-profile',
+                component: () => import('../views/pages/ProfileView.vue'),
+                meta: { requiresAuth: true, roles: ['Admin'], title: 'Profile' }
             }
         ]
     },
@@ -150,6 +163,12 @@ const routes = [
                 name: 'librarian-books',
                 component: LBooksView,
                 meta: { requiresAuth: true, roles: ['Librarian'], title: 'Books Management' }
+            },
+            {
+                path: 'profile',
+                name: 'librarian-profile',
+                component: () => import('../views/pages/ProfileView.vue'),
+                meta: { requiresAuth: true, roles: ['Librarian'], title: 'Profile' }
             }
         ]
     },

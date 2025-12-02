@@ -33,7 +33,7 @@ import {
 
 import axios from 'axios';
 import { onMounted, ref, computed } from 'vue';
-import { getAllPackages, deletePackage, updatePackage } from '../../services/apiPackage.js';
+import { getAllPackages, deletePackage, updatePackage, activatePackage } from '../../services/apiPackage.js';
 import BookMarkControll from '../../components/BookMarkControll.vue';
 import Chart from '../../components/Chart.vue';
 
@@ -46,7 +46,8 @@ const loading = ref(true);
 const allPackages = ref([]);
 const numberAnimation = ref(null);
 
-const totalPackages = computed(() => allPackages.value.length);
+const totalPackages = computed(() => allPackages.value.filter(p => p.TrangThai !== false).length);
+const totalHiddenPackages = computed(() => allPackages.value.filter(p => p.TrangThai === false).length);
 const totalSubscribers = computed(() => 
     allPackages.value.reduce((acc, pkg) => acc + (pkg.SubscriberCount || 0), 0)
 );
@@ -85,6 +86,25 @@ const handleDeletePackage = async (id, packageName) => {
     }
 };
 //<========== Xóa gói
+
+//==========> Kích hoạt lại gói
+const activatingPackage = ref(null);
+
+const handleActivatePackage = async (id) => {
+    if (activatingPackage.value) return;
+    
+    try {
+        activatingPackage.value = id;
+        const response = await activatePackage(id);
+        message[response.status](response.message);
+        await loadPackages();
+    } catch (error) {
+        message.error(error.response?.data?.message || 'Lỗi khi kích hoạt gói');
+    } finally {
+        activatingPackage.value = null;
+    }
+};
+//<========== Kích hoạt lại gói
 
 //==========> Sửa gói
 const editModalShow = ref(false);
@@ -357,13 +377,21 @@ const customThemeDark = ref({
             <!-- Header statistics -->
             <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
                 <h1 class="text-3xl uppercase font-semibold">Quản lý gói thành viên</h1>
-                <NGrid :cols="4" x-gap="12" y-gap="12" class="my-4">
+                <NGrid :cols="5" x-gap="12" y-gap="12" class="my-4">
                     <NGi :span="1">
                         <NStatistic
                             label="Tổng số gói"
                             class="relative w-full ring-2 ring-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-600/50 dark:to-blue-700/50 shadow-md text-white rounded-md p-4"
                         >
                             <NNumberAnimation ref="numberAnimation" :from="0" :to="totalPackages" :active="true"/>
+                        </NStatistic>
+                    </NGi>
+                    <NGi :span="1">
+                        <NStatistic
+                            label="Gói bị ẩn"
+                            class="relative w-full ring-2 ring-red-500 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-600/50 dark:to-red-700/50 shadow-md text-white rounded-md p-4"
+                        >
+                            <NNumberAnimation :from="0" :to="totalHiddenPackages" :active="true"/>
                         </NStatistic>
                     </NGi>
                     <NGi :span="1">
@@ -406,9 +434,39 @@ const customThemeDark = ref({
                 <NList clickable hoverable show-divider="true">
                     <NGrid cols="3" x-gap="12" y-gap="12" class="p-2">
                         <NGi v-if="allPackages && allPackages.length > 0" span="1" v-for="pkg in allPackages" :key="pkg._id">
-                            <NListItem class="dark:bg-gray-600/20 h-full group bg-transparent shadow rounded-md p-4 relative">
+                            <NListItem 
+                                class="dark:bg-gray-600/20 h-full group bg-transparent shadow rounded-md p-4 relative"
+                                :class="{ 'ring-2 ring-red-500 opacity-70': pkg.TrangThai === false }"
+                            >
+                                <!-- Badge trạng thái -->
+                                <span 
+                                    v-if="pkg.TrangThai === false" 
+                                    class="absolute top-2 left-2 z-20"
+                                >
+                                    <NTag type="error" size="small">
+                                        <i class="fa-solid fa-eye-slash mr-1"></i> Đã ẩn
+                                    </NTag>
+                                </span>
+                                
                                 <span class="absolute hidden group-hover:block top-2 right-2 z-10">
                                     <NSpace>
+                                        <!-- Nút kích hoạt lại (chỉ hiện khi gói bị ẩn) -->
+                                        <NPopconfirm
+                                            v-if="pkg.TrangThai === false"
+                                            @positive-click="handleActivatePackage(pkg._id)"
+                                            @negative-click="() => message.info('Đã hủy')"
+                                            positive-text="Kích hoạt"
+                                            negative-text="Hủy"
+                                        >
+                                            <template #trigger>
+                                                <NIcon :class="{ 'opacity-50': activatingPackage === pkg._id }">
+                                                    <i v-if="activatingPackage === pkg._id" class="fa-solid fa-spinner fa-spin text-green-500"></i>
+                                                    <i v-else class="fa-solid fa-rotate-left text-green-500 hover:text-green-700 cursor-pointer"></i>
+                                                </NIcon>
+                                            </template>
+                                            Bạn có chắc muốn kích hoạt lại gói này?
+                                        </NPopconfirm>
+                                        
                                         <NPopconfirm
                                             @positive-click="handleDeletePackage(pkg._id, pkg.TenGoi)"
                                             @negative-click="() => message.info('Hủy xóa')"
@@ -422,9 +480,11 @@ const customThemeDark = ref({
                                                     <i v-else class="fa-solid fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>
                                                 </NIcon>
                                             </template>
-                                            {{ pkg.SubscriberCount > 0 
-                                                ? `Gói này có ${pkg.SubscriberCount} người đang sử dụng. Hành động này sẽ ẩn gói thay vì xóa hẳn.` 
-                                                : 'Bạn có chắc muốn xóa gói này?' 
+                                            {{ pkg.TrangThai === false 
+                                                ? 'Gói này đã bị ẩn. Xóa để xóa vĩnh viễn khỏi hệ thống?'
+                                                : pkg.SubscriberCount > 0 
+                                                    ? `Gói này có ${pkg.SubscriberCount} người đang sử dụng. Hành động này sẽ ẩn gói thay vì xóa hẳn.` 
+                                                    : 'Gói này không có người dùng. Bạn có muốn ẩn gói này?' 
                                             }}
                                         </NPopconfirm>
                                         

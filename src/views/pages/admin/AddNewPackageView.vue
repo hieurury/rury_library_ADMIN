@@ -58,6 +58,9 @@ const modelForm             = ref({
 //all packages
 const packages              = ref([]);
 
+//submit loading
+const submittingForm        = ref(false);
+
 //=================== VALIDATE & RULES ===================//
 const numberValidator = (value) => {
     return value > 0;
@@ -198,9 +201,12 @@ const uploadBadge = async () => {
 
 //check form trước khi gửi server
 function submitForm() {
+    if (submittingForm.value) return; // Ngăn double click
+    
     formRef.value?.validate(async (error) => {
         if (!error) {
             try {
+                submittingForm.value = true;
                 const badge = await uploadBadge();
                 
                 const postData = {
@@ -233,6 +239,8 @@ function submitForm() {
                 previewBadgeUrl.value = `${BASE_API}${DEFAULT_BADGE}`;
             } catch (error) {
                 message.error(error.response?.data?.message || 'Lỗi khi tạo gói');
+            } finally {
+                submittingForm.value = false;
             }
         } else {
             message.error('Vui lòng kiểm tra lại thông tin!');
@@ -361,7 +369,7 @@ const previewBorrowDuration = computed(() => {
                             </NFormItem>
                             
                             <NFormItem>
-                                <NButton @click="submitForm" type="primary" size="large" class="w-full">
+                                <NButton @click="submitForm" type="primary" size="large" class="w-full" :loading="submittingForm" :disabled="submittingForm">
                                     <i class="fa-solid fa-plus mr-2"></i>
                                     Tạo gói thành viên
                                 </NButton>
