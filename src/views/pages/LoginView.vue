@@ -318,11 +318,6 @@ const masterRecovery = async () => {
                             >
                                 Gửi mã OTP
                             </NButton>
-                            <div class="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                                <p class="text-xs text-yellow-700 dark:text-yellow-400">
-                                    <strong>⚠️ Lưu ý:</strong> Nếu bạn chưa cập nhật email, vui lòng liên hệ IT Support.
-                                </p>
-                            </div>
                         </NSpace>
 
                         <!-- Step 2: Enter OTP -->
@@ -405,11 +400,6 @@ const masterRecovery = async () => {
                             >
                                 Đăng nhập bằng Master key
                             </NButton>
-                            <div class="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded">
-                                <p class="text-xs text-red-700 dark:text-red-400">
-                                    <strong>🔒 Bảo mật:</strong> Master key chỉ dành cho chủ thư viện. Không chia sẻ với bất kỳ ai.
-                                </p>
-                            </div>
                         </NSpace>
                     </NSpin>
                 </NTabPane>

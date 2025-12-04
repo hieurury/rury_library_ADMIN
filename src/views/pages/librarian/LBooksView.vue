@@ -338,21 +338,13 @@ const formatPrice = (price) => {
             <!-- header page statistic -->
             <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
                 <h1 class="text-3xl uppercase font-semibold">Quản lý sách - Thủ thư</h1>
-                <NGrid :cols="3" x-gap="12" y-gap="12" class="my-4">
+                <NGrid :cols="5" x-gap="12" y-gap="12" class="my-4">
                     <NGi :span="1">
                         <NStatistic
-                            label="Tổng số đầu sách"
+                            label="Tổng số sách"
                             class="relative w-full ring-2 ring-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-600/50 dark:to-blue-700/50 shadow-md text-white rounded-md p-4"
                         >
                             <NNumberAnimation ref="numberAnimation" :from="0" :to="totalBooks" :active="true"/>
-                        </NStatistic>
-                    </NGi>
-                    <NGi :span="1">
-                        <NStatistic
-                            label="Tổng số bản sao"
-                            class="relative w-full ring-2 ring-green-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-600/50 dark:to-green-700/50 shadow-md rounded-md p-4"
-                        >
-                            <NNumberAnimation ref="numberAnimation" :from="0" :to="totalBookTemplate" :active="true"/>
                         </NStatistic>
                     </NGi>
                     <NGi :span="1">
@@ -363,169 +355,130 @@ const formatPrice = (price) => {
                             <NNumberAnimation ref="numberAnimation" :from="0" :to="availableBooks" :active="true"/>
                         </NStatistic>
                     </NGi>
-                </NGrid>
-            </NSpace>
-
-            <!-- Advanced filter section -->
-            <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
-                <h1 class="text-3xl uppercase font-semibold">Tìm kiếm & Lọc sách</h1>
-                <NGrid cols="6" x-gap="12" y-gap="12" class="my-4">
-                    <NGi :span="3">
-                        <NInput 
-                            v-model:value="filterData.query" 
-                            clearable
-                            placeholder="Tìm kiếm theo tên sách, tác giả, mã sách...">
-                            <template #prefix>
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </template>
-                        </NInput>
-                    </NGi>
                     <NGi :span="1">
-                        <NSelect 
-                            v-model:value="filterData.category"
-                            filterable
-                            clearable
-                            :options="categoriesOptions" 
-                            :render-label="renderIconCategory" 
-                            placeholder="Thể loại..." 
-                        />
-                    </NGi>
-                    <NGi :span="1">
-                        <NSelect 
-                            v-model:value="filterData.publisher"
-                            filterable
-                            clearable
-                            :options="publishersOptions" 
-                            placeholder="Nhà xuất bản..." 
-                        />
-                    </NGi>
-                    <NGi :span="1">
-                        <NSelect 
-                            v-model:value="filterData.availability"
-                            clearable
-                            :options="availabilityOptions" 
-                            placeholder="Tình trạng..." 
-                        />
-                    </NGi>
-                    <NGi :span="2">
-                        <NSelect 
-                            v-model:value="filterData.priceRange"
-                            clearable
-                            :options="priceRangeOptions" 
-                            placeholder="Khoảng giá..." 
-                        />
-                    </NGi>
-                    <NGi :span="2">
-                        <NSelect 
-                            v-model:value="filterData.yearRange"
-                            clearable
-                            :options="yearRangeOptions" 
-                            placeholder="Năm xuất bản..." 
-                        />
-                    </NGi>
-                    <NGi :span="2">
-                        <NButton 
-                            type="warning" 
-                            @click="resetFilter"
-                            class="w-full"
+                        <NStatistic
+                            label="Tổng số bản sao"
+                            class="relative w-full ring-2 ring-green-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-600/50 dark:to-green-700/50 shadow-md rounded-md p-4"
                         >
-                            <i class="fa-solid fa-rotate-right mr-2"></i>
-                            Đặt lại bộ lọc
-                        </NButton>
+                            <NNumberAnimation ref="numberAnimation" :from="0" :to="totalBookTemplate" :active="true"/>
+                        </NStatistic>
+                    </NGi>
+                    <NGi :span="2">
+                        <NStatistic
+                            label="Chức năng"
+                            class="relative w-full ring-2 ring-slate-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-slate-700/90 dark:to-slate-500/60 shadow-md rounded-md p-4"
+                        >
+                            <NButton @click="resetFilter" type="warning">
+                                <i class="fa-solid fa-rotate-right mr-2"></i> Đặt lại bộ lọc
+                            </NButton>
+                            <BookMarkControll :position="{top: '-4px', right: '0'}" :children="{ width: '40px' }" img="book-bookmark" />
+                        </NStatistic>
                     </NGi>
                 </NGrid>
-                
-                <!-- Results info -->
-                <NSpace align="center" class="text-sm text-gray-600 dark:text-gray-400">
-                    <i class="fa-solid fa-info-circle"></i>
-                    <span>Tìm thấy <strong>{{ currentBooks.length }}</strong> kết quả</span>
-                </NSpace>
             </NSpace>
 
-            <!-- List books -->
+            <!-- filter book -->
             <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
-                <h1 class="text-3xl uppercase font-semibold">Danh sách sách</h1>
-                
+                <h1 class="text-3xl uppercase font-semibold">Tất cả sách</h1>
+                <NSpace class="my-4" align="center" justify="space-between">
+                    <NGrid cols="4" x-gap="12" y-gap="12" class="w-full">
+                        <NGi :span="2">
+                            <NInput 
+                                v-model:value="filterData.query" 
+                                clearable
+                                class="min-w-md" 
+                                placeholder="Tìm kiếm sách, tác giả...">
+                                <template #prefix>
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </template>
+                            </NInput>
+                        </NGi>
+                        <NGi :span="1">
+                            <NSelect 
+                                v-model:value="filterData.category"
+                                filterable
+                                clearable
+                                :options="categoriesOptions" 
+                                :render-label="renderIconCategory" 
+                                placeholder="Lọc theo loại..." 
+                            />
+                        </NGi>
+                        <NGi :span="1">
+                            <NSelect 
+                                v-model:value="filterData.publisher"
+                                filterable
+                                clearable
+                                :options="publishersOptions" 
+                                placeholder="Lọc theo NXB..." 
+                            />
+                        </NGi>
+                    </NGrid>
+                </NSpace>
+                <!-- list book view -->
                 <NList clickable hoverable show-divider="true">
-                    <NGrid cols="3" x-gap="12" y-gap="12" class="p-2">
+                    <NGrid cols="3" x-gap="12" y-gap="12" class=" p-2">
                         <NGi v-if="currentBooks && currentBooks.length > 0" span="1" v-for="book in booksView" :key="book.MASACH">
                             <NListItem 
-                                class="dark:bg-gray-600/20 h-full group bg-transparent shadow rounded-md p-4 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                                class="dark:bg-gray-600/20 h-full group bg-transparent shadow rounded-md p-2 relative cursor-pointer"
                                 @click="openDetailModal(book)"
                             >
-                                <NGrid :cols="5" x-gap="12" y-gap="12">
-                                    <NGi span="2" :style="`background-image: url(${BASE_API}${book.HINHANH});`" class="bg-no-repeat bg-center bg-contain min-h-[200px]"></NGi>
-                                    <NGi span="3">
+                                <span class="absolute hidden group-hover:block top-0 right-2">
+                                    <NSpace>
+                                        <NIcon @click.stop="openDetailModal(book)">
+                                            <i class="fa-solid fa-eye text-blue-500 hover:text-blue-700 cursor-pointer"></i>
+                                        </NIcon>
+                                    </NSpace>
+                                </span>
+                                <NGrid :cols="3" x-gap="12" y-gap="12">
+                                    <NGi span="1" :style="`background-image: url(${BASE_API}${book.HINHANH});`" class="bg-no-repeat bg-center bg-contain"></NGi>
+                                    <NGi span="2">
                                         <NThing>
                                             <template #description>
-                                                <NEllipsis line-clamp="2">
+                                                <NEllipsis line-clamp="1">
                                                     <h3 class="text-lg font-semibold">{{ book.TENSACH }}</h3>
                                                 </NEllipsis>
-                                                <NSpace class="text-sm my-1">
+                                                <NSpace class="text-sm">
                                                     <NEllipsis :line-clamp="1">
-                                                        <NText class="text-gray-500 text-xs">Mã: {{ book.MASACH }}</NText>
+                                                        <NText class="text-gray-500 text-xs">Tác giả: {{ book.TACGIA }}</NText>
                                                         <NDivider vertical />
-                                                        <NText class="text-gray-500 text-xs">{{ book.TACGIA }}</NText>
+                                                        <NText class="text-gray-500 text-xs">NXB: {{ book.MAXB.TENNXB }}</NText>
                                                     </NEllipsis>
                                                 </NSpace>
-                                                <NEllipsis :line-clamp="1">
-                                                    <NText class="text-gray-500 text-xs">NXB: {{ book.MAXB.TENNXB }}</NText>
-                                                </NEllipsis>
-                                                <NEllipsis expand-trigger="click" :line-clamp="3" class="my-2">
+                                                <NEllipsis expand-trigger="click" :line-clamp="2">
                                                     {{ book.MOTA }}
                                                 </NEllipsis>
-                                                <NDivider/>
-                                                <NSpace justify="space-between" align="center">
-                                                    <NSpace wrap size="small">
-                                                        <NTag v-for="theLoai in book.THELOAI.slice(0, 2)" :key="theLoai.MaLoai" :style="{background: theLoai.Color, color: '#fff'}" size="small">
-                                                            {{ theLoai.TenLoai }}
-                                                        </NTag>
-                                                        <NTag v-if="book.THELOAI.length > 2" size="small" type="info">
-                                                            +{{ book.THELOAI.length - 2 }}
-                                                        </NTag>
-                                                    </NSpace>
-                                                </NSpace>
-                                                <NDivider/>
-                                                <NSpace justify="space-between" align="center" class="mt-2">
-                                                    <NTag type="success">
-                                                        <i class="fa-solid fa-book mr-1"></i>
-                                                        SL: {{ book.SOQUYEN }}
-                                                    </NTag>
-                                                    <NTag type="warning">
-                                                        {{ formatPrice(book.DONGIA) }}
+                                                <NSpace wrap size="small">
+                                                    <NTag v-for="theLoai in book.THELOAI" :key="theLoai.MaLoai" :style="{background: theLoai.Color, color: '#fff'}" size="small">
+                                                        {{ theLoai.TenLoai }}
                                                     </NTag>
                                                 </NSpace>
+                                                <NDivider/>
+                                                <NTag type="warning">{{ formatPrice(book.DONGIA) }} / quyển</NTag>
                                             </template>
                                         </NThing>
                                     </NGi>
                                 </NGrid>
-                                <div class="absolute bottom-2 right-2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <i class="fa-solid fa-eye mr-1"></i>
-                                    Xem chi tiết
-                                </div>
                             </NListItem>
                         </NGi>
-                        
                         <NGi span="3" class="min-h-36" v-if="!loading && currentBooks.length === 0">
                             <NResult
                                 title="Không tìm thấy sách"
-                                description="Không có sách nào phù hợp với bộ lọc của bạn!"
+                                description="Thiệc sự là không tìm thấy sách nào y vậy thiệc á!"
                             >
                                 <template #icon>
                                     <NImage style="width: 100px;" :src="`${BASE_API}public/imgs/default/not-found.svg`"></NImage>
                                 </template>
                             </NResult>
                         </NGi>
-                        
-                        <NGi v-if="loading" v-for="n in 6" :key="n">
+                        <NGi v-if="loading" v-for="n in 5" :key="n">
                             <NSkeleton class="min-h-36"></NSkeleton>
                         </NGi>
                     </NGrid>
                 </NList>
-                
                 <NSpace v-show="totalPages > 1" justify="center">
                     <NPagination v-model:page="currentPage" :page-count="totalPages" :page-size="booksPerPage"></NPagination>
                 </NSpace>
+                
             </NSpace>
         </NSpace>
     </NConfigProvider>

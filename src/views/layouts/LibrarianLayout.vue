@@ -120,7 +120,7 @@ const menuOptions           =       [
                                 removeAccount();
                                 localStorage.removeItem('adminToken');
                                 message.success('Đăng xuất thành công');
-                                router.push({ name: 'login' });
+                                window.location.href = '/login';
                             }
                         }"
                     >

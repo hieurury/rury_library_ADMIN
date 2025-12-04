@@ -320,6 +320,16 @@ const submitEditForm = async () => {
                         class="w-full ring-2 ring-green-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-600/50 dark:to-green-700/50 shadow-md rounded-md p-4"
                     />
                 </NGi>
+                <NGi :span="2">
+                    <NStatistic
+                        label="Chức năng"
+                        class="relative w-full ring-2 ring-slate-500 bg-gradient-to-r from-green-600 to-green-700 dark:from-slate-700/90 dark:to-slate-500/60 shadow-md rounded-md p-4"
+                    >
+                        <NButton @click="$router.push('/admin/categories/add')" type="success">
+                            <i class="fa-solid fa-plus mr-2"></i> Thêm danh mục mới
+                        </NButton>
+                    </NStatistic>
+                </NGi>
             </NGrid>
         </NSpace>
         <NSpace vertical class="p-8 shadow-md rounded-md bg-white dark:bg-slate-600/30">
