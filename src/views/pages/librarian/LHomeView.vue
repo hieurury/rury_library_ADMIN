@@ -25,6 +25,8 @@ import {
     NEmpty,
     NPopconfirm,
     NCheckbox,
+    NSpin,
+    NSkeleton,
     useMessage
 }                           from 'naive-ui'
 import { 
@@ -61,6 +63,13 @@ import { currentAccount }   from '../../../hooks/useAccount.js'
 const message               = useMessage();
 const allBooks              = ref([]) //tất cả sách
 const allBorrows            = ref([]) //tất cả mượn trả
+
+// Loading states
+const isPageLoading         = ref(true)
+const isBorrowSubmitting    = ref(false)
+const isReturnSubmitting    = ref(false)
+const isPickupSubmitting    = ref(false)
+const isLoadingReturnBooks  = ref(false)
 
 const allReaders            = ref([]) //nguyên dàn reader cho chọn
 const booksSelect           = ref([]) //nguyên dàn sách cho chọn - cấu hình cho select
@@ -156,10 +165,12 @@ const hasViolations = computed(() => {
 //<========== Computed để hiển thị thông tin đã chọn
 
 const loadBorrowBookWithReader = async () => {
-    const listBook = []
-    const response = await getBorrowsWithUserId(selectedReturnReader.value);
-    const borrowingBooks = response.data.filter(borrow => borrow.TINHTRANG === 'borrowing');
-    const today = new Date();
+    isLoadingReturnBooks.value = true;
+    try {
+        const listBook = []
+        const response = await getBorrowsWithUserId(selectedReturnReader.value);
+        const borrowingBooks = response.data.filter(borrow => borrow.TINHTRANG === 'borrowing');
+        const today = new Date();
     
     borrowingBooks.forEach(borrow => {
         const MASACH = borrow.MA_BANSAO.split('T')[0].trim();
@@ -176,6 +187,11 @@ const loadBorrowBookWithReader = async () => {
         })
     })
     listSelectBookReturn.value = listBook;
+    } catch (error) {
+        message.error('Không thể tải danh sách sách đang mượn');
+    } finally {
+        isLoadingReturnBooks.value = false;
+    }
 }
 
 watch(selectedReturnReader, async (newVal) => {
@@ -192,11 +208,16 @@ watch(selectedPickupBill, () => {
 })
 
 onMounted(async () => {
-    await getAllBooksData()
-    await getAllBorrowsData()
-    await getAllReadersData()
-    await loadPendingPickupBills()
-    loadBooksSelect()
+    isPageLoading.value = true;
+    try {
+        await getAllBooksData()
+        await getAllBorrowsData()
+        await getAllReadersData()
+        await loadPendingPickupBills()
+        loadBooksSelect()
+    } finally {
+        isPageLoading.value = false;
+    }
 })
 
 
@@ -345,30 +366,55 @@ async function handleLoad(option) {
 
 //==========> Xác nhận mượn sách
 const submitBorrow = async () => {
-    const data = {
-        MANHANVIEN: currentAccount.value?.MSNV || 'system',
-        MADOCGIA: selectedReader.value,
-        LIST_MA_BANSAO: listSelectedBooks.value,
+    if (!selectedReader.value || !listSelectedBooks.value?.length) {
+        message.warning('Vui lòng chọn đọc giả và sách cần mượn');
+        return;
     }
-    const response = await createBorrow(data);
-    message[response.status](response.message);
+    isBorrowSubmitting.value = true;
+    try {
+        const data = {
+            MANHANVIEN: currentAccount.value?.MSNV || 'system',
+            MADOCGIA: selectedReader.value,
+            LIST_MA_BANSAO: listSelectedBooks.value,
+        }
+        const response = await createBorrow(data);
+        message[response.status](response.message);
+        if (response.status === 'success') {
+            selectedReader.value = null;
+            listSelectedBooks.value = null;
+            await getAllBorrowsData();
+        }
+    } catch (error) {
+        message.error(error.response?.data?.message || 'Có lỗi xảy ra khi mượn sách');
+    } finally {
+        isBorrowSubmitting.value = false;
+    }
 }
 
 const submitReturn = async () => {
-
-    const LIST_MAPHIEU      = selectedReturnBook.value
-    const LIST_LOST_BOOKS   = lostBooks.value
-    
-    const response = await returnBook(LIST_MAPHIEU, LIST_LOST_BOOKS);
-    console.log(response);
-    message[response.status](response.message);
-    
-    if (response.status === 'success' && response.data) {
+    if (!selectedReturnBook.value?.length) {
+        message.warning('Vui lòng chọn sách cần trả');
+        return;
+    }
+    isReturnSubmitting.value = true;
+    try {
+        const LIST_MAPHIEU      = selectedReturnBook.value
+        const LIST_LOST_BOOKS   = lostBooks.value
         
-        selectedReturnReader.value = null;
-        selectedReturnBook.value = null;
-        lostBooks.value = [];
-        listSelectBookReturn.value = [];
+        const response = await returnBook(LIST_MAPHIEU, LIST_LOST_BOOKS);
+        message[response.status](response.message);
+        
+        if (response.status === 'success') {
+            selectedReturnReader.value = null;
+            selectedReturnBook.value = null;
+            lostBooks.value = [];
+            listSelectBookReturn.value = [];
+            await getAllBorrowsData();
+        }
+    } catch (error) {
+        message.error(error.response?.data?.message || 'Có lỗi xảy ra khi trả sách');
+    } finally {
+        isReturnSubmitting.value = false;
     }
 }
 //<========== Xác nhận mượn sách
@@ -392,18 +438,19 @@ const selectPendingBills = computed(() => {
 })
 
 const handleConfirmPickupAll = async () => {
+    if (!selectedPickupBill.value) {
+        message.warning('Vui lòng chọn bill')
+        return
+    }
+    
+    const billInfo = selectedPickupBillInfo.value
+    if (!billInfo || !billInfo.PHIEUWAITING || billInfo.PHIEUWAITING.length === 0) {
+        message.warning('Bill này không có sách chờ lấy')
+        return
+    }
+    
+    isPickupSubmitting.value = true;
     try {
-        if (!selectedPickupBill.value) {
-            message.warning('Vui lòng chọn bill')
-            return
-        }
-        
-        const billInfo = selectedPickupBillInfo.value
-        if (!billInfo || !billInfo.PHIEUWAITING || billInfo.PHIEUWAITING.length === 0) {
-            message.warning('Bill này không có sách chờ lấy')
-            return
-        }
-        
         // Lấy tất cả mã phiếu waiting
         const allPhieuMaList = billInfo.PHIEUWAITING.map(p => p.MAPHIEU)
         const confirmPayment = billInfo.LOAITHANHTOAN === 'cash' && billInfo.TRANGTHAI === false
@@ -423,6 +470,8 @@ const handleConfirmPickupAll = async () => {
         }
     } catch (error) {
         message.error(error.response?.data?.message || 'Có lỗi xảy ra khi xác nhận lấy sách')
+    } finally {
+        isPickupSubmitting.value = false;
     }
 }
 //<========== Xử lý tab lấy sách
@@ -441,6 +490,7 @@ const customThemeDark = ref({})
 
 <template>
     <NConfigProvider :theme-overrides="isDark ? customThemeDark : customThemeLight">
+        <NSpin :show="isPageLoading" description="Đang tải dữ liệu...">
         <div class="p-6">
             <h1 class="text-4xl font-semibold uppercase my-2">Quản lý mượn trả sách</h1>
             <div class="p-6 shadow-lg rounded-lg bg-white dark:bg-gray-800">
@@ -461,6 +511,7 @@ const customThemeDark = ref({})
                                     <NSelect 
                                     v-model:value="selectedReader"
                                     :options="selectReaders"
+                                    :disabled="isBorrowSubmitting"
                                     clearable 
                                     filterable 
                                     placeholder="Nhập tên hoặc mã đọc giả"/>
@@ -468,7 +519,8 @@ const customThemeDark = ref({})
                                 <n-form-item-row label="Sách">
                                     <NTreeSelect 
                                     v-model:value="listSelectedBooks"
-                                    :options="booksSelect" 
+                                    :options="booksSelect"
+                                    :disabled="isBorrowSubmitting" 
                                     :on-load="handleLoad"
                                     :render-suffix="renderLabelSelect"
                                     checkable
@@ -479,8 +531,19 @@ const customThemeDark = ref({})
                                     placeholder="Nhập tên hoặc mã sách"/>
                                 </n-form-item-row>
                                 </n-form>
-                                <n-button @click="submitBorrow" type="primary" block secondary strong>
-                                Xác nhận mượn
+                                <n-button 
+                                    @click="submitBorrow" 
+                                    type="primary" 
+                                    block 
+                                    secondary 
+                                    strong
+                                    :loading="isBorrowSubmitting"
+                                    :disabled="isBorrowSubmitting || !selectedReader || !listSelectedBooks?.length"
+                                >
+                                    <template #icon v-if="!isBorrowSubmitting">
+                                        <i class="fa-solid fa-check"></i>
+                                    </template>
+                                    {{ isBorrowSubmitting ? 'Đang xử lý...' : 'Xác nhận mượn' }}
                                 </n-button>
                             </n-tab-pane>
                             <n-tab-pane name="return" tab="Trả sách">
@@ -489,6 +552,8 @@ const customThemeDark = ref({})
                                     <NSelect 
                                     v-model:value="selectedReturnReader"
                                     :options="selectReaders"
+                                    :loading="isLoadingReturnBooks"
+                                    :disabled="isReturnSubmitting"
                                     clearable 
                                     filterable 
                                     placeholder="Nhập tên hoặc mã đọc giả"/>
@@ -497,6 +562,8 @@ const customThemeDark = ref({})
                                     <NSelect 
                                     v-model:value="selectedReturnBook"
                                     :options="listSelectBookReturn"
+                                    :loading="isLoadingReturnBooks"
+                                    :disabled="isReturnSubmitting || isLoadingReturnBooks"
                                     multiple
                                     filterable 
                                     clearable
@@ -511,8 +578,15 @@ const customThemeDark = ref({})
                                     negative-text="Hủy"
                                 >
                                     <template #trigger>
-                                        <n-button type="primary" block secondary strong>
-                                            Xác nhận trả
+                                        <n-button 
+                                            type="primary" 
+                                            block 
+                                            secondary 
+                                            strong
+                                            :loading="isReturnSubmitting"
+                                            :disabled="isReturnSubmitting || !selectedReturnBook?.length"
+                                        >
+                                            {{ isReturnSubmitting ? 'Đang xử lý...' : 'Xác nhận trả' }}
                                         </n-button>
                                     </template>
                                     <NSpace vertical size="small">
@@ -535,8 +609,10 @@ const customThemeDark = ref({})
                                     block 
                                     secondary 
                                     strong
+                                    :loading="isReturnSubmitting"
+                                    :disabled="isReturnSubmitting || !selectedReturnBook?.length"
                                 >
-                                    Xác nhận trả
+                                    {{ isReturnSubmitting ? 'Đang xử lý...' : 'Xác nhận trả' }}
                                 </n-button>
                             </n-tab-pane>
                             <n-tab-pane name="pickup" tab="Lấy sách">
@@ -545,6 +621,7 @@ const customThemeDark = ref({})
                                     <NSelect 
                                     v-model:value="selectedPickupBill"
                                     :options="selectPendingBills"
+                                    :disabled="isPickupSubmitting"
                                     clearable 
                                     filterable 
                                     placeholder="Chọn bill cần lấy sách"/>
@@ -562,9 +639,10 @@ const customThemeDark = ref({})
                                             block 
                                             secondary 
                                             strong
-                                            :disabled="!selectedPickupBill"
+                                            :loading="isPickupSubmitting"
+                                            :disabled="!selectedPickupBill || isPickupSubmitting"
                                         >
-                                            Xác nhận lấy tất cả sách
+                                            {{ isPickupSubmitting ? 'Đang xử lý...' : 'Xác nhận lấy tất cả sách' }}
                                         </n-button>
                                     </template>
                                     Xác nhận đọc giả đã thanh toán tiền mặt?
@@ -576,9 +654,10 @@ const customThemeDark = ref({})
                                     block 
                                     secondary 
                                     strong
-                                    :disabled="!selectedPickupBill"
+                                    :loading="isPickupSubmitting"
+                                    :disabled="!selectedPickupBill || isPickupSubmitting"
                                 >
-                                    Xác nhận lấy tất cả sách
+                                    {{ isPickupSubmitting ? 'Đang xử lý...' : 'Xác nhận lấy tất cả sách' }}
                                 </n-button>
                             </n-tab-pane>
                             </n-tabs>
@@ -774,6 +853,7 @@ const customThemeDark = ref({})
                 </NGrid>
             </div>
         </div>
+        </NSpin>
     </NConfigProvider>
 </template>
 

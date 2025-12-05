@@ -12,7 +12,9 @@ import {
     NTag,
     NDivider,
     useMessage,
-    NPopconfirm
+    NPopconfirm,
+    NSpin,
+    NSkeleton
 }                          from    'naive-ui';
 import {
     ref,
@@ -51,6 +53,7 @@ const currentReaderInfo = ref(null);
 
 // Loading state
 const isSubmitting = ref(false);
+const isPageLoading = ref(true);
 
 //==========> Liên quan đến dữ liệu đọc giả
 const readerOptions = computed(() => {
@@ -194,10 +197,17 @@ const handleCancelSubscribe = () => {
 //<========== Đăng kí gói
 
 const loadData = async () => {
-    const readersResponse = await getAllReaders();
-    const packageResponse = await getAllPackages();
-    allPackages.value = packageResponse.data;
-    allReaders.value = readersResponse.data;
+    isPageLoading.value = true;
+    try {
+        const readersResponse = await getAllReaders();
+        const packageResponse = await getAllPackages();
+        allPackages.value = packageResponse.data;
+        allReaders.value = readersResponse.data;
+    } catch (error) {
+        message.error('Không thể tải dữ liệu');
+    } finally {
+        isPageLoading.value = false;
+    }
 };
 
 onMounted(async () => {
@@ -212,6 +222,7 @@ const formatPrice = (price) => {
 
 <template>
     <NSpace vertical class="p-6">
+        <NSpin :show="isPageLoading" description="Đang tải dữ liệu...">
         <div class="p-6 dark:bg-gray-800 rounded-md shadow-md">
             <h1 class="text-3xl uppercase my-4 font-semibold">Đăng kí thành viên</h1>
             <NGrid cols="2" x-gap="12" y-gap="12">
@@ -315,6 +326,7 @@ const formatPrice = (price) => {
                 </NGi>
             </NGrid>
         </div>
+        </NSpin>
     </NSpace>
 </template>
 
