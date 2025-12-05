@@ -33,6 +33,8 @@ const customThemeDark = ref({
 });
 
 onMounted(() => {
+  //thêm title
+  document.title = "RuryLib | admin side";
   //khoi tao giao dien
   if(isDark.value) {
     document.documentElement.classList.toggle('dark', isDark.value);

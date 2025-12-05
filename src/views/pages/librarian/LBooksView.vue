@@ -270,6 +270,18 @@ const openDetailModal = async (book) => {
     }
 };
 
+const getTinhTrangType = (tinhtrang) => {
+    if (tinhtrang === 'new') return 'success';
+    if (tinhtrang === 'lost') return 'error';
+    return 'warning'; // old
+};
+
+const getTinhTrangText = (tinhtrang) => {
+    if (tinhtrang === 'new') return 'Mới';
+    if (tinhtrang === 'lost') return 'Mất';
+    return 'Cũ'; // old
+};
+
 const templateColumns = [
     {
         title: 'Mã bản sao',
@@ -282,10 +294,10 @@ const templateColumns = [
         key: 'TINHTRANG',
         width: 120,
         render: (row) => h(NTag, {
-            type: row.TINHTRANG === 'new' ? 'success' : 'warning',
+            type: getTinhTrangType(row.TINHTRANG),
             size: 'small'
         }, {
-            default: () => row.TINHTRANG === 'new' ? 'Mới' : 'Cũ'
+            default: () => getTinhTrangText(row.TINHTRANG)
         })
     },
     {
@@ -293,10 +305,10 @@ const templateColumns = [
         key: 'TRANGTHAI',
         width: 130,
         render: (row) => h(NTag, {
-            type: row.TRANGTHAI ? 'error' : 'success',
+            type: row.TINHTRANG === 'lost' ? 'error' : (row.TRANGTHAI ? 'error' : 'success'),
             size: 'small'
         }, {
-            default: () => row.TRANGTHAI ? 'Đang mượn' : 'Có sẵn'
+            default: () => row.TINHTRANG === 'lost' ? 'Đã mất' : (row.TRANGTHAI ? 'Đang mượn' : 'Có sẵn')
         })
     },
     {
@@ -310,11 +322,16 @@ const templateColumns = [
 ];
 
 const availableTemplatesCount = computed(() => {
-    return bookTemplates.value.filter(t => !t.TRANGTHAI).length;
+    // Không tính sách bị mất vào số sách có sẵn
+    return bookTemplates.value.filter(t => !t.TRANGTHAI && t.TINHTRANG !== 'lost').length;
 });
 
 const borrowedTemplatesCount = computed(() => {
     return bookTemplates.value.filter(t => t.TRANGTHAI).length;
+});
+
+const lostTemplatesCount = computed(() => {
+    return bookTemplates.value.filter(t => t.TINHTRANG === 'lost').length;
 });
 //<========== Modal xem chi tiết bản sao
 
@@ -549,7 +566,7 @@ const formatPrice = (price) => {
             <NDivider />
 
             <!-- Thống kê bản sao -->
-            <NGrid cols="3" x-gap="12" y-gap="12">
+            <NGrid cols="4" x-gap="12" y-gap="12">
                 <NGi>
                     <NCard :bordered="false" class="dark:bg-green-600/20 bg-green-100">
                         <NStatistic label="Tổng bản sao" :value="bookTemplates.length">
@@ -569,8 +586,17 @@ const formatPrice = (price) => {
                     </NCard>
                 </NGi>
                 <NGi>
-                    <NCard :bordered="false" class="dark:bg-red-600/20 bg-red-100">
+                    <NCard :bordered="false" class="dark:bg-orange-600/20 bg-orange-100">
                         <NStatistic label="Đang mượn" :value="borrowedTemplatesCount">
+                            <template #prefix>
+                                <i class="fa-solid fa-book-open text-orange-600"></i>
+                            </template>
+                        </NStatistic>
+                    </NCard>
+                </NGi>
+                <NGi>
+                    <NCard :bordered="false" class="dark:bg-red-600/20 bg-red-100">
+                        <NStatistic label="Đã mất" :value="lostTemplatesCount">
                             <template #prefix>
                                 <i class="fa-solid fa-circle-xmark text-red-600"></i>
                             </template>
@@ -589,7 +615,7 @@ const formatPrice = (price) => {
                     :bordered="false"
                     striped
                     size="small"
-                    :row-class-name="(row) => row.TRANGTHAI ? 'opacity-60' : ''"
+                    :row-class-name="(row) => row.TRANGTHAI || row.TINHTRANG === 'lost' ? 'opacity-60' : ''"
                 />
             </NCard>
         </NSpace>
